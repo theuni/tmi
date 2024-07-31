@@ -11,6 +11,7 @@
 #define TMI_H_
 
 #include "tminode.h"
+#include "tminode_detail.h"
 
 #include <algorithm>
 #include <array>
