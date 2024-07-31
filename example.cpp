@@ -92,7 +92,7 @@ using hashers = hashers_helper<myclass, hash_myclass, hash_myclass_unique>;
 
 int main()
 {
-    tmi<myclass, comparators, hashers, std::allocator<myclass>> bar;
+    tmi::tmi<myclass, comparators, hashers, std::allocator<myclass>> bar;
     for (int i = 0; i <= 1000; i++) {
         bar.emplace(i);
     }

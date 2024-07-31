@@ -6,6 +6,8 @@
 #include <limits>
 #include <cstdlib>
 
+namespace tmi {
+
 template <typename T, int ComparatorSize, int NodeSize>
 class tminode
 {
@@ -185,4 +187,5 @@ public:
     }
 };
 
+} // namespace tmi
 #endif // TMINODE_H

@@ -19,6 +19,8 @@
 #include <tuple>
 #include <vector>
 
+namespace tmi {
+
 template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
 class tmi
 {
@@ -1197,5 +1199,7 @@ public:
         return sizeof(node_type);
     }
 };
+
+} // namespace tmi
 
 #endif // TMI_H_
