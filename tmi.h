@@ -1114,6 +1114,7 @@ public:
         node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, std::forward<Args>(args)...);
         bool inserted = do_insert(node);
         if (!inserted) {
+            node = nullptr;
             std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
             std::allocator_traits<node_allocator_type>::deallocate(m_alloc, node, 1);
         }
