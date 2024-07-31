@@ -669,7 +669,10 @@ class tmi
         } else if constexpr (I + 1 < num_hashers) {
             return do_find<I + 1, H>(hash_key);
         } else {
-            static_assert(false, "Invalid hasher");
+            // g++ isn't able to cope with this static_assert for some reason.
+            // This should be unreachable code.
+            //static_assert(false, "Invalid hasher");
+            return nullptr;
         }
     }
 
