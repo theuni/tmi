@@ -20,6 +20,7 @@
 #include <vector>
 
 namespace tmi {
+using namespace detail;
 
 template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
 class tmi
