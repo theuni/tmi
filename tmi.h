@@ -79,7 +79,6 @@ class tmi
     static bool get_foreach_hasher(Callable&& func, Node* node, Args&&... args)
     {
         if constexpr (num_hashers) {
-            func.template operator()<I>(node, std::get<I>(args)...);
             if (!func.template operator()<I>(node, std::get<I>(args)...)) {
                 return false;
             }
@@ -105,7 +104,6 @@ class tmi
     static bool get_foreach_comparator(Callable&& func, Node* node, Args&&... args)
     {
         if (num_comparators) {
-            func.template operator()<I>(node, std::get<I>(args)...);
             if (!func.template operator()<I>(node, std::get<I>(args)...)) {
                 return false;
             }
