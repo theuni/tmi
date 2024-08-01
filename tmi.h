@@ -261,6 +261,170 @@ class tmi
         x->template set_parent<I>(y);
     }
 
+    template <int I>
+    static base_type* avl_rotate_right(base_type* x) {
+        base_type* z = right<I>(x);
+        base_type* t23 = left<I>(z);
+        set_right<I>(x, t23);
+        if (t23 != nullptr)
+            set_parent<I>(t23, x);
+        set_left<I>(z, x);
+        set_parent<I>(x, z);
+        if (balance_factor<I>(z) == 0) {
+            set_balance_factor<I>(x, 1);
+            set_balance_factor<I>(z, -1);
+        } else {
+            set_balance_factor<I>(x, 0);
+            set_balance_factor<I>(z, 0);
+        }
+        return z;
+    }
+
+    template <int I>
+    static base_type* avl_rotate_left(base_type* x) {
+        base_type* z = left<I>(x);
+        base_type* t23 = right<I>(z);
+        set_right<I>(x, t23);
+        if (t23 != nullptr)
+            set_parent<I>(t23, x);
+        set_right<I>(z, x);
+        set_parent<I>(x, z);
+        if (balance_factor<I>(z) == 0) {
+            set_balance_factor<I>(x, 1);
+            set_balance_factor<I>(z, -1);
+        } else {
+            set_balance_factor<I>(x, 0);
+            set_balance_factor<I>(z, 0);
+        }
+        return z;
+    }
+
+    template <int I>
+    static base_type* avl_rotate_rightleft(base_type* x)
+    {
+        base_type* z = right<I>(x);
+        base_type* y = left<I>(z);
+        base_type* t3 = right<I>(y);
+        set_left<I>(z, t3);
+        if (t3 != nullptr) {
+            set_parent<I>(t3, z);
+        }
+        set_right<I>(y, z);
+        set_parent<I>(z, y);
+        base_type* t2 = left<I>(y);
+        set_right<I>(x, t2);
+        if (t2 != nullptr) {
+            set_parent<I>(t2, x);
+        }
+        set_left<I>(y, x);
+        set_parent<I>(x, y);
+
+        if (balance_factor<I>(y) == 0) {
+            set_balance_factor<I>(x, 0);
+            set_balance_factor<I>(z, 0);
+        } else if (balance_factor<I>(y) > 0) {
+            set_balance_factor<I>(x, -1);
+            set_balance_factor<I>(z, 0);
+        } else {
+            set_balance_factor<I>(x, 0);
+            set_balance_factor<I>(z, 1);
+        }
+        set_balance_factor<I>(y, 0);
+        return y;
+    }
+
+    template <int I>
+    static base_type* avl_rotate_leftright(base_type* x)
+    {
+        base_type* z = left<I>(x);
+        base_type* y = right<I>(z);
+        base_type* t3 = left<I>(y);
+        set_right<I>(z, t3);
+        if (t3 != nullptr) {
+            set_parent<I>(t3, z);
+        }
+        set_left<I>(y, z);
+        set_parent<I>(z, y);
+        base_type* t2 = right<I>(y);
+        set_left<I>(x, t2);
+        if (t2 != nullptr) {
+            set_parent<I>(t2, x);
+        }
+        set_right<I>(y, x);
+        set_parent<I>(x, y);
+
+        if (balance_factor<I>(y) == 0) {
+            set_balance_factor<I>(x, 0);
+            set_balance_factor<I>(z, 0);
+        } else if (balance_factor<I>(y) > 0) {
+            set_balance_factor<I>(x, -1);
+            set_balance_factor<I>(z, 0);
+        } else {
+            set_balance_factor<I>(x, 0);
+            set_balance_factor<I>(z, -1);
+        }
+        set_balance_factor<I>(y, 0);
+        return y;
+    }
+
+    template <int I>
+    static void  avl_rebalance_after_insert(base_type* z, base_type*& new_root)
+    {
+        base_type* g;
+        base_type* n;
+        while (parent<I>(z)) {
+            base_type* x = parent<I>(z);
+            if (z == right<I>(x)) {
+                if (balance_factor<I>(x) > 0) {
+                    g = parent<I>(x);
+                    if (balance_factor<I>(z) < 0) {
+                        n = avl_rotate_rightleft<I>(x);
+                    } else {
+                        n = avl_rotate_left<I>(x);
+                    }
+                } else {
+                    if (balance_factor<I>(x) < 0) {
+                        set_balance_factor<I>(x, 0);
+                        break;
+                    }
+                    set_balance_factor<I>(x, 1);
+                    z = x;
+                    continue;
+                }
+            } else {
+                if (balance_factor<I>(x) < 0) {
+                    g = parent<I>(x);
+                    if (balance_factor<I>(z) > 0) {
+                        n = avl_rotate_leftright<I>(x);
+                    } else {
+                        n = avl_rotate_right<I>(x);
+                    }
+                } else {
+                    if (balance_factor<I>(x) > 0) {
+                        set_balance_factor<I>(x, 0);
+                        break;
+                    }
+                    set_balance_factor<I>(x, -1);
+                    z = x;
+                    continue;
+                }
+            }
+            set_parent<I>(n, g);
+            if (g != nullptr) {
+                if (x == left<I>(g)) {
+                    set_left<I>(g, n);
+                } else {
+                    set_right<I>(g, n);
+                }
+            } else {
+                new_root = n;
+            }
+            break;
+        }
+    }
+
+
+
 
     // Precondition:  root != nullptr && z != nullptr.
     //                tree_invariant(root) == true.
@@ -731,7 +895,12 @@ class tmi
             base->template set_parent<I>(parent);
             parent->template set_right<I>(base);
         }
-        tree_balance_after_insert<I>(get_root_base<I>(), base);
+        //tree_balance_after_insert<I>(get_root_base<I>(), base);
+        base_type* new_root = nullptr;
+        avl_rebalance_after_insert<I>(base, new_root);
+        if (new_root) {
+            m_roots.template set_left<I>(new_root);
+        }
     }
 
     bool do_insert(node_type* node)

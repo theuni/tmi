@@ -17,6 +17,7 @@ public:
             tminode_base* m_left{nullptr};
             tminode_base* m_right{nullptr};
             tminode_base* m_parent{nullptr};
+            int m_balance_factor{0};
         };
         struct hash {
             tminode_base* m_nexthash{nullptr};
@@ -111,6 +112,17 @@ public:
             return std::get<I>(m_tree_pointers).m_right;
         }
 
+        template <int I>
+        int balance_factor() const
+        {
+            return std::get<I>(m_tree_pointers).m_balance_factor;
+        }
+
+        template <int I>
+        void set_balance_factor(int value)
+        {
+            std::get<I>(m_tree_pointers).m_balance_factor = value;
+        }
 
         tminode* node() const
         {
