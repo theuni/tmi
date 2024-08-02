@@ -46,7 +46,7 @@ namespace detail {
     template <int I>
     auto* left(auto* base)
     {
-        return base->template right<I>();
+        return base->template left<I>();
     }
 
     template <int I>
