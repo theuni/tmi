@@ -261,12 +261,12 @@ class tmi
 
     template <int I>
     static base_type* avl_rotate_right(base_type* x) {
-        base_type* z = right<I>(x);
-        base_type* t23 = left<I>(z);
-        set_right<I>(x, t23);
+        base_type* z = left<I>(x);
+        base_type* t23 = right<I>(z);
+        set_left<I>(x, t23);
         if (t23 != nullptr)
             set_parent<I>(t23, x);
-        set_left<I>(z, x);
+        set_right<I>(z, x);
         set_parent<I>(x, z);
         if (balance_factor<I>(z) == 0) {
             set_balance_factor<I>(x, 1);
@@ -280,12 +280,12 @@ class tmi
 
     template <int I>
     static base_type* avl_rotate_left(base_type* x) {
-        base_type* z = left<I>(x);
-        base_type* t23 = right<I>(z);
+        base_type* z = right<I>(x);
+        base_type* t23 = left<I>(z);
         set_right<I>(x, t23);
         if (t23 != nullptr)
             set_parent<I>(t23, x);
-        set_right<I>(z, x);
+        set_left<I>(z, x);
         set_parent<I>(x, z);
         if (balance_factor<I>(z) == 0) {
             set_balance_factor<I>(x, 1);
@@ -368,9 +368,9 @@ class tmi
     template <int I>
     static void  avl_rebalance_after_insert(base_type* z, base_type*& new_root)
     {
-        base_type* g;
-        base_type* n;
         while (parent<I>(z)) {
+            base_type* g;
+            base_type* n;
             base_type* x = parent<I>(z);
             if (z == right<I>(x)) {
                 if (balance_factor<I>(x) > 0) {
