@@ -68,6 +68,18 @@ namespace detail {
     }
 
     template <int I>
+    void increase_balance_factor(auto* base)
+    {
+        base->template increase_balance_factor<I>();
+    }
+
+    template <int I>
+    void decrease_balance_factor(auto* base)
+    {
+        base->template decrease_balance_factor<I>();
+    }
+
+    template <int I>
     auto* next_hash(auto* base)
     {
         return base->template next_hash<I>();

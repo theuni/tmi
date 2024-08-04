@@ -124,6 +124,18 @@ public:
             std::get<I>(m_tree_pointers).m_balance_factor = value;
         }
 
+        template <int I>
+        void increase_balance_factor()
+        {
+            std::get<I>(m_tree_pointers).m_balance_factor++;
+        }
+
+        template <int I>
+        void decrease_balance_factor()
+        {
+            std::get<I>(m_tree_pointers).m_balance_factor--;
+        }
+
         tminode* node() const
         {
             return m_node;
