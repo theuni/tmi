@@ -260,6 +260,19 @@ class tmi
     }
 
     template <int I>
+    static base_type* avl_tree_next(base_type* x)
+    {
+        if (x->template right<I>() != nullptr)
+            return tree_min<I>(x->template right<I>());
+        base_type* y = parent<I>(x);
+        while (y != nullptr && x == right<I>(y)) {
+            x = y;
+            y = parent<I>(x);
+        }
+        return y;
+    }
+
+    template <int I>
     static base_type* avl_rotate_right(base_type* x) {
         base_type* z = left<I>(x);
         base_type* t23 = right<I>(z);
@@ -421,7 +434,145 @@ class tmi
         }
     }
 
+    template <int I>
+    void avl_rebalance_for_erase(base_type* n, base_type*& new_root)
+    {
+        base_type* g = nullptr;
+        int b = 0;
+        for (base_type* x = parent<I>(n); x != nullptr; x = g)
+        {
+            g = parent<I>(x);
+            if (n == left<I>(x)) {
+                if (balance_factor<I>(x) > 0) {
+                    base_type* z = right<I>(x);
+                    b = balance_factor<I>(z);
+                    if (b < 0) {
+                        n = avl_rotate_rightleft<I>(x);
+                    } else {
+                        n = avl_rotate_left<I>(x);
+                    }
+                } else {
+                    if (balance_factor<I>(x) == 0) {
+                        set_balance_factor<I>(x, 1);
+                        break;
+                    }
+                    n = x;
+                    set_balance_factor<I>(n, 0);
+                    continue;
+                }
+            } else {
+                if (balance_factor<I>(x) < 0) {
+                    base_type* z = left<I>(x);
+                    b = balance_factor<I>(z);
+                    if (b > 0) {
+                        n = avl_rotate_leftright<I>(x);
+                    } else {
+                        n = avl_rotate_right<I>(x);
+                    }
+                } else {
+                    if (balance_factor<I>(x) == 0) {
+                        set_balance_factor<I>(x, -1);
+                        break;
+                    }
+                    n = x;
+                    set_balance_factor<I>(n, 0);
+                    continue;
+                }
+            }
+            set_parent<I>(n, g);
+            if (g != nullptr) {
+                if (x == left<I>(g)) {
+                    set_left<I>(g, n);
+                } else {
+                    set_right<I>(g, n);
+                }
+            } else {
+                new_root = n;
+            }
+            if (b == 0) {
+                break;
+            }
+        }
+    }
 
+    template <int I>
+    void avl_erase(base_type* x, base_type*& new_root)
+    {
+        base_type* p = parent<I>(x);
+        base_type* successor = nullptr;
+        if (left<I>(x) == nullptr && right<I>(x) == nullptr) {
+            if (!p) {
+                new_root = nullptr;
+                return;
+            }
+            avl_rebalance_for_erase<I>(x, new_root);
+            if (tree_is_left_child<I>(x)) {
+                p->template set_left<I>(nullptr);
+            } else {
+                p->template set_right<I>(nullptr);
+            }
+        } else if (left<I>(x) != nullptr && right<I>(x) != nullptr) {
+            successor = avl_tree_next<I>(x);
+            if (successor == right<I>(x)) {
+
+                set_left<I>(successor, left<I>(x));
+                set_parent<I>(successor, p);
+                set_parent<I>(left<I>(x), successor);
+                set_balance_factor<I>(successor, balance_factor<I>(x));
+                if (p) {
+                    if (tree_is_left_child<I>(x)) {
+                        set_left<I>(p, successor);
+                    } else {
+                        set_right<I>(p, successor);
+                    }
+                } else {
+                    new_root = successor;
+                }
+                if (!right<I>(successor)) {
+                    decrease_balance_factor<I>(successor);
+                } else {
+                    avl_rebalance_for_erase<I>(right<I>(successor), new_root);
+                }
+            } else {
+                base_type* old_successor_parent = parent<I>(successor);
+                set_left<I>(old_successor_parent, right<I>(successor));
+                set_right<I>(successor, right<I>(x));
+                set_left<I>(successor, left<I>(x));
+                set_parent<I>(old_successor_parent, successor);
+                set_parent<I>(successor, p);
+                set_balance_factor<I>(successor, balance_factor<I>(x));
+                if (p) {
+                    if (tree_is_left_child<I>(x)) {
+                        set_left<I>(p, successor);
+                    } else {
+                        set_right<I>(p, successor);
+                    }
+                } else {
+                    new_root = successor;
+                }
+                set_left<I>(old_successor_parent, x);
+                set_parent<I>(x, old_successor_parent);
+                x->template set_left<I>(nullptr);
+                x->template set_right<I>(nullptr);
+                set_balance_factor<I>(x, 0);
+                avl_rebalance_for_erase<I>(x, new_root);
+                old_successor_parent->template set_left<I>(nullptr);
+            }
+        } else {
+            successor = left<I>(x) ? left<I>(x) : right<I>(x);
+            avl_rebalance_for_erase<I>(x, new_root);
+            if (p) {
+                if (tree_is_left_child<I>(x)) {
+                    set_left<I>(p, successor);
+                } else {
+                    set_right<I>(p, successor);
+                }
+            } else {
+                new_root = successor;
+            }
+            set_parent<I>(successor, p);
+        }
+    }
 
 
     // Precondition:  root != nullptr && z != nullptr.
@@ -885,7 +1036,7 @@ class tmi
         base_type* parent = hints.m_parent;
         if (!parent) {
             set_root_node<I>(node);
-            base->template set_parent<I>(&m_roots);
+            base->template set_parent<I>(nullptr);
         } else if (hints.m_inserted_left) {
             base->template set_parent<I>(parent);
             parent->template set_left<I>(base);
@@ -893,7 +1044,6 @@ class tmi
             base->template set_parent<I>(parent);
             parent->template set_right<I>(base);
         }
-        //tree_balance_after_insert<I>(get_root_base<I>(), base);
         base_type* new_root = nullptr;
         avl_rebalance_after_insert<I>(base, new_root);
         if (new_root) {
@@ -957,7 +1107,11 @@ class tmi
     void do_erase(node_type* node)
     {
         foreach_comparator([this]<int I>(node_type* node) {
-            tree_remove<I>(get_root_base<I>(), node->get_base());
+            base_type* new_root = nullptr;
+            avl_erase<I>(node->get_base(), new_root);
+            if (new_root) {
+                m_roots.template set_left<I>(new_root);
+            }
         }, node);
 
         foreach_hasher([this]<int I>(node_type* node) {
