@@ -25,6 +25,14 @@ namespace tmi {
 
 using namespace detail;
 
+template <typename T, int ComparatorSize, int NodeSize>
+struct comparator_insert_hints {
+    using node_type = tminode<T, ComparatorSize, NodeSize>;
+    using base_type = node_type::base_type;
+    base_type* m_parent{nullptr};
+    bool m_inserted_left{false};
+};
+
 template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
 class tmi
 {
@@ -40,13 +48,10 @@ class tmi
     using hasher_base = tmi_hasher_base<T, num_comparators, num_hashers>;
     static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
     using hasher_insert_hints_type = hasher_insert_hints<T, num_comparators, num_hashers>;
+    using comparator_insert_hints_type = comparator_insert_hints<T, num_comparators, num_hashers>;
     using hasher_premodify_cache_type = hasher_premodify_cache<T, num_comparators, num_hashers>;
 
-    struct comparator_insert_hints {
-        base_type* m_parent{nullptr};
-        bool m_inserted_left{false};
-    };
-    using comparator_hints_array = std::array<comparator_insert_hints, num_comparators>;
+    using comparator_hints_array = std::array<comparator_insert_hints_type, num_comparators>;
 
     using hasher_hints_array = std::array<hasher_insert_hints_type, num_hashers>;
 
@@ -541,7 +546,7 @@ class tmi
     }
 
     template <int I>
-    bool preinsert_node_comparator(node_type* node, comparator_insert_hints& hints)
+    bool preinsert_node_comparator(node_type* node, comparator_insert_hints_type& hints)
     {
         const auto& comparator = get_comparator<I>();
         base_type* parent = nullptr;
@@ -577,7 +582,7 @@ class tmi
     }
 
     template <int I>
-    void insert_node_comparator(node_type* node, const comparator_insert_hints& hints)
+    void insert_node_comparator(node_type* node, const comparator_insert_hints_type& hints)
     {
         base_type* base = node->get_base();
         base_type* parent = hints.m_parent;
