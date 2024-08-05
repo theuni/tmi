@@ -63,7 +63,7 @@ class tmi
 
     comparator_types m_comparators;
 
-    std::array<std::unique_ptr<hasher_base>, num_hashers> m_hasher_instances;
+    std::array<hasher_base*, num_hashers> m_hasher_instances;
 
     node_allocator_type m_alloc;
 
@@ -129,7 +129,7 @@ class tmi
     {
         using Hasher = std::tuple_element_t<I, hasher_types>;
         using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
-        return *static_cast<const tmi_hasher_type*>(std::get<I>(m_hasher_instances).get());
+        return *static_cast<const tmi_hasher_type*>(std::get<I>(m_hasher_instances));
     }
 
     template <int I>
@@ -137,7 +137,7 @@ class tmi
     {
         using Hasher = std::tuple_element_t<I, hasher_types>;
         using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
-        return *static_cast<tmi_hasher_type*>(std::get<I>(m_hasher_instances).get());
+        return *static_cast<tmi_hasher_type*>(std::get<I>(m_hasher_instances));
     }
 
     template <int I>
@@ -943,10 +943,10 @@ public:
 
     tmi()
     {
-        foreach_hasher([this]<int I>(std::nullptr_t, std::unique_ptr<hasher_base>& hasher) {
+        foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
             using Hasher = std::tuple_element_t<I, hasher_types>;
             using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
-            hasher = std::make_unique<tmi_hasher_type>();
+            hasher = new tmi_hasher_type();
          }, nullptr, m_hasher_instances);
     }
 
@@ -955,6 +955,14 @@ public:
     ~tmi()
     {
         clear();
+
+        foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
+            using Hasher = std::tuple_element_t<I, hasher_types>;
+            using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
+            tmi_hasher_type* to_delete = static_cast<tmi_hasher_type*>(hasher);
+            delete to_delete;
+         }, nullptr, m_hasher_instances);
+
     }
 
     template <typename... Args>
