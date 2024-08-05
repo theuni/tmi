@@ -403,7 +403,7 @@ public:
 
     }
 
-    tmi(const allocator_type& alloc) : m_alloc(alloc) {}
+    tmi(const allocator_type& alloc) : m_alloc(alloc), tmi() {}
 
     ~tmi()
     {
