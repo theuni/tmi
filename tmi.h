@@ -672,6 +672,22 @@ class tmi
     }
 
     template <int I>
+    bool hasher_erase_if_modified(node_type* node, const hasher_premodify_cache& cache)
+    {
+        const auto& hasher = get_hasher<I>();
+        base_type* base = node->get_base();
+        if (hasher(node->value()) != base->template hash<I>()) {
+            if (cache.m_is_head) {
+                *cache.m_bucket = nullptr;
+            } else {
+                cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
+            }
+            return true;
+        }
+        return false;
+    }
+
+    template <int I>
     void insert_node_hash(node_type* node, const hasher_insert_hints& hints)
     {
         base_type* node_base = node->get_base();
@@ -865,17 +881,9 @@ class tmi
         comparator_modify_actions_array comp_modify;
 
         // Erase modified hashes
-        foreach_hasher([this]<int I>(node_type* node, auto& modify, const auto& cache, const auto& hasher) {
-            base_type* base = node->get_base();
-            if (hasher(node->value()) != base->template hash<I>()) {
-                if (cache.m_is_head) {
-                    *cache.m_bucket = nullptr;
-                } else {
-                    cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
-                }
-                modify.m_do_reinsert = true;
-            }
-         }, node, hash_modify, hash_cache, m_hashers);
+        foreach_hasher([this]<int I>(node_type* node, auto& modify, const auto& cache) {
+            modify.m_do_reinsert = hasher_erase_if_modified<I>(node, cache);
+         }, node, hash_modify, hash_cache);
 
 
         // Erase modified sorts
