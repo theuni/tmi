@@ -788,6 +788,34 @@ class tmi
         tree_balance_after_insert<I>(get_root_base<I>(), base);
     }
 
+    template <int I>
+    bool comparator_erase_if_modified(node_type* node)
+    {
+        const auto& comparator = get_comparator<I>();
+        base_type* parent = nullptr;
+        base_type* base = node->get_base();
+        base_type* next_ptr = nullptr;
+        base_type* prev_ptr = nullptr;
+        base_type* root = get_root_base<I>();
+
+        if (base != tree_min<I>(root))
+            prev_ptr = tree_prev<I>(base);
+        if (base != tree_max<I>(root))
+            next_ptr = tree_next<I>(base);
+
+        bool needs_resort = ((next_ptr != nullptr && comparator(next_ptr->node()->value(), node->value())) ||
+                             (prev_ptr != nullptr && comparator(node->value(), prev_ptr->node()->value())));
+        if (needs_resort) {
+            tree_remove<I>(root, base);
+            base->template set_parent<I>(nullptr);
+            base->template set_left<I>(nullptr);
+            base->template set_right<I>(nullptr);
+            base->template set_color<I>(Color::RED);
+            return true;
+        }
+        return false;
+    }
+
     bool do_insert(node_type* node)
     {
         comparator_hints_array comp_hints;
@@ -887,28 +915,9 @@ class tmi
 
 
         // Erase modified sorts
-        foreach_comparator([this]<int I>(node_type* node, auto& modify, const auto& comparator) {
-            base_type* base = node->get_base();
-            base_type* next_ptr = nullptr;
-            base_type* prev_ptr = nullptr;
-            base_type* root = get_root_base<I>();
-
-            if (base != tree_min<I>(root))
-                prev_ptr = tree_prev<I>(base);
-            if (base != tree_max<I>(root))
-                next_ptr = tree_next<I>(base);
-
-            bool needs_resort = ((next_ptr != nullptr && comparator(next_ptr->node()->value(), node->value())) ||
-                                 (prev_ptr != nullptr && comparator(node->value(), prev_ptr->node()->value())));
-            if (needs_resort) {
-                tree_remove<I>(root, base);
-                base->template set_parent<I>(nullptr);
-                base->template set_left<I>(nullptr);
-                base->template set_right<I>(nullptr);
-                base->template set_color<I>(Color::RED);
-                modify.m_do_reinsert = true;
-            }
-        }, node, comp_modify, m_comparators);
+        foreach_comparator([this]<int I>(node_type* node, auto& modify) {
+            modify.m_do_reinsert = comparator_erase_if_modified<I>(node);
+        }, node, comp_modify);
 
         // At this point the node has been removed from all buckets and trees.
         // Test to see if it's reinsertable everywhere or delete it.
