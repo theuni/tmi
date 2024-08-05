@@ -50,6 +50,8 @@ class tmi
     using hasher_hints_array = std::array<hasher_insert_hints_type, num_hashers>;
 
     base_type m_roots;
+    template <int I>
+    using sort_iterator_type = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>>::iterator;
 
     node_type* m_begin{nullptr};
     node_type* m_end{nullptr};
@@ -879,7 +881,7 @@ public:
         using element_type = T;
         iterator() = default;
         template <int I>
-        iterator(sort_iterator<I> it) : m_node(it.m_node)
+        iterator(sort_iterator_type<I> it) : m_node(it.m_node)
         {
         }
         iterator(node_type* node) : m_node(node) {}
@@ -1059,18 +1061,15 @@ public:
     }
 
     template <int I>
-    sort_iterator<I> sort_begin() const
+    sort_iterator_type<I> sort_begin() const
     {
-        base_type* root = get_root_base<I>();
-        if (root == nullptr)
-            return sort_iterator<I>(nullptr);
-        return sort_iterator<I>(tree_min<I>(root)->node());
+        return get_comparator_instance<I>().begin();
     }
 
     template <int I>
-    sort_iterator<I> sort_end() const
+    sort_iterator_type<I> sort_end() const
     {
-        return sort_iterator<I>(nullptr);
+        return get_comparator_instance<I>().end();
     }
 
     iterator iterator_to(const T& entry) const
