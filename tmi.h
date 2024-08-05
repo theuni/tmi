@@ -45,6 +45,12 @@ class tmi
     };
     using comparator_hints_array = std::array<comparator_insert_hints, num_comparators>;
 
+    struct hasher_premodify_cache {
+        bool m_is_head{false};
+        base_type** m_bucket{nullptr};
+        base_type* m_prev{nullptr};
+    };
+
     struct hasher_insert_hints {
         size_t m_hash{0};
         base_type** m_bucket{nullptr};
@@ -634,6 +640,38 @@ class tmi
     }
 
     template <int I>
+    void hasher_create_premodify_cache(node_type* node, hasher_premodify_cache& cache)
+    {
+        const auto& hasher = get_hasher<I>();
+        hash_buckets& buckets = get_buckets<I>();
+        base_type* base = node->get_base();
+        auto hash = base->template hash<I>();
+        size_t bucket_count = buckets.size();
+        if (!bucket_count) {
+            return;
+        }
+        auto index = hash % bucket_count;
+
+        base_type*& bucket = buckets.at(index);
+        base_type* cur_node = bucket;
+        base_type* prev_node = cur_node;
+        while (cur_node) {
+            if (cur_node->template hash<I>() == hash && hasher(cur_node->node()->value(), node->value())) {
+                if (cur_node == prev_node) {
+                    cache.m_bucket = &bucket;
+                    cache.m_is_head = true;
+                } else {
+                    cache.m_prev = prev_node;
+                    cache.m_is_head = false;
+                }
+                break;
+            }
+            prev_node = cur_node;
+            cur_node = cur_node->template next_hash<I>();
+        }
+    }
+
+    template <int I>
     void insert_node_hash(node_type* node, const hasher_insert_hints& hints)
     {
         base_type* node_base = node->get_base();
@@ -802,11 +840,6 @@ class tmi
     template <typename Callable>
     bool do_modify(node_type* node, Callable&& func)
     {
-        struct hasher_premodify_cache {
-            bool m_is_head{false};
-            base_type** m_bucket{nullptr};
-            base_type* m_prev{nullptr};
-        };
         struct hash_modify_actions {
             bool m_do_reinsert{false};
         };
@@ -821,33 +854,9 @@ class tmi
 
         // Create a cache of the pre-modified hash buckets
         hasher_premodify_cache_array hash_cache;
-        foreach_hasher([this]<int I>(node_type* node, auto& cache, const auto& hasher, auto& buckets) {
-            base_type* base = node->get_base();
-            auto hash = base->template hash<I>();
-            size_t bucket_count = buckets.size();
-            if (!bucket_count) {
-                return;
-            }
-            auto index = hash % bucket_count;
-
-            base_type*& bucket = buckets.at(index);
-            base_type* cur_node = bucket;
-            base_type* prev_node = cur_node;
-            while (cur_node) {
-                if (cur_node->template hash<I>() == hash && hasher(cur_node->node()->value(), node->value())) {
-                    if (cur_node == prev_node) {
-                        cache.m_bucket = &bucket;
-                        cache.m_is_head = true;
-                    } else {
-                        cache.m_prev = prev_node;
-                        cache.m_is_head = false;
-                    }
-                    break;
-                }
-                prev_node = cur_node;
-                cur_node = cur_node->template next_hash<I>();
-            }
-        }, node, hash_cache, m_hashers, m_buckets);
+        foreach_hasher([this]<int I>(node_type* node, auto& cache) {
+            hasher_create_premodify_cache<I>(node, cache);
+        }, node, hash_cache);
 
 
         func(node->value());
