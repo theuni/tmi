@@ -33,7 +33,7 @@ class tmi
     static constexpr int num_hashers = std::tuple_size_v<hasher_types>;
     using node_type = tminode<T, num_comparators, num_hashers>;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
-    using base_type = node_type::tminode_base;
+    using base_type = node_type::base_type;
     using Color = typename base_type::Color;
     using hash_buckets = std::vector<base_type*>;
 

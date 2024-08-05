@@ -9,10 +9,10 @@
 namespace tmi {
 
 template <typename T, int ComparatorSize, int NodeSize>
-class tminode
-{
-public:
-    struct tminode_base {
+class tminode;
+
+template <typename T, int ComparatorSize, int NodeSize>
+struct tminode_base {
         struct rb {
             tminode_base* m_left{nullptr};
             tminode_base* m_right{nullptr};
@@ -37,13 +37,13 @@ public:
            functions have been replaced.
 
         */
-        tminode* m_node{nullptr};
+        tminode<T, ComparatorSize, NodeSize>* m_node{nullptr};
 
         std::array<rb, ComparatorSize> m_tree_pointers{};
         std::array<hash, NodeSize> m_hash_pointers{};
 
     public:
-        friend class tminode;
+        friend class tminode<T, ComparatorSize, NodeSize>;
         enum Color : bool {
             RED = false,
             BLACK = true
@@ -112,7 +112,7 @@ public:
         }
 
 
-        tminode* node() const
+        tminode<T, ComparatorSize, NodeSize>* node() const
         {
             return m_node;
         }
@@ -142,8 +142,13 @@ public:
         }
     };
 
+template <typename T, int ComparatorSize, int NodeSize>
+class tminode
+{
+public:
+    using base_type = tminode_base<T, ComparatorSize, NodeSize>;
     T m_value;
-    tminode_base m_base{};
+    base_type m_base{};
     tminode* m_prev{nullptr};
     tminode* m_next{nullptr};
 
@@ -170,7 +175,7 @@ public:
     const T& value() const { return m_value; }
     T& value() { return m_value; }
 
-    tminode_base* get_base()
+    base_type* get_base()
     {
         return &m_base;
     }
