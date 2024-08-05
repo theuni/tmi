@@ -37,7 +37,6 @@ class tmi
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using base_type = node_type::base_type;
     using Color = typename base_type::Color;
-    using hash_buckets = std::vector<base_type*>;
     using hasher_base = tmi_hasher_base<T, num_comparators, num_hashers>;
     static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
     using hasher_insert_hints_type = hasher_insert_hints<T, num_comparators, num_hashers>;
@@ -51,17 +50,13 @@ class tmi
 
     using hasher_hints_array = std::array<hasher_insert_hints_type, num_hashers>;
 
-    static constexpr size_t first_hashes_resize = 2048;
-
     base_type m_roots;
-    std::array<hash_buckets, num_hashers> m_buckets{};
 
     node_type* m_begin{nullptr};
     node_type* m_end{nullptr};
     size_t m_size{0};
 
     comparator_types m_comparators;
-    hasher_types m_hashers;
 
     std::array<std::unique_ptr<hasher_base>, num_hashers> m_hasher_instances;
 
@@ -125,12 +120,6 @@ class tmi
     }
 
     template <int I>
-    const auto& get_hasher() const
-    {
-        return std::get<I>(m_hashers);
-    }
-
-    template <int I>
     const auto& get_hasher_instance() const
     {
         using Hasher = std::tuple_element_t<I, hasher_types>;
@@ -144,18 +133,6 @@ class tmi
         using Hasher = std::tuple_element_t<I, hasher_types>;
         using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
         return *static_cast<tmi_hasher_type*>(std::get<I>(m_hasher_instances).get());
-    }
-
-    template <int I>
-    auto& get_buckets()
-    {
-        return std::get<I>(m_buckets);
-    }
-
-    template <int I>
-    const auto& get_buckets() const
-    {
-        return std::get<I>(m_buckets);
     }
 
     template <int I>
@@ -547,178 +524,6 @@ class tmi
 //
 //===----------------------------------------------------------------------===//
 
-    /*
-        Create new buckets, iterate through the old ones moving them to
-        their updated indicies in the new buckets, then replace the old
-        with the new
-    */
-    template <int I>
-    void rehash(size_t new_size)
-    {
-        hash_buckets& buckets = get_buckets<I>();
-        hash_buckets new_buckets(new_size, nullptr);
-        for (base_type* bucket : buckets) {
-            base_type* cur_node = bucket;
-            while (cur_node) {
-                base_type* next_node = cur_node->template next_hash<I>();
-                size_t index = cur_node->template hash<I>() % new_buckets.size();
-                base_type*& new_bucket = new_buckets.at(index);
-                cur_node->template set_next_hashptr<I>(new_bucket);
-                new_bucket = cur_node;
-                cur_node = next_node;
-            }
-        }
-        buckets = std::move(new_buckets);
-    }
-
-    template <int I>
-    void hash_remove_direct(base_type* node)
-    {
-        const auto& hasher = get_hasher<I>();
-        hash_buckets& buckets = get_buckets<I>();
-        auto hash = node->template hash<I>();
-        size_t bucket_count = buckets.size();
-        if (!bucket_count) {
-            return;
-        }
-        auto index = hash % bucket_count;
-
-        base_type*& bucket = buckets.at(index);
-        base_type* cur_node = bucket;
-        base_type* prev_node = cur_node;
-        while (cur_node) {
-            if (cur_node->template hash<I>() == hash && hasher(cur_node->node()->value(), node->node()->value())) {
-                if (cur_node == prev_node) {
-                    // head of list
-                    bucket = cur_node->template next_hash<I>();
-                } else {
-                    prev_node->template set_next_hashptr<I>(cur_node->template next_hash<I>());
-                }
-                break;
-            }
-            prev_node = cur_node;
-            cur_node = cur_node->template next_hash<I>();
-        }
-    }
-
-    /*
-        First rehash if necessary, using first_hashes_resize as the initial
-        size if empty. Then find calculate the bucket and insert there.
-    */
-    template <int I>
-    bool preinsert_node_hash(node_type* node, hasher_insert_hints_type& hints)
-    {
-        const auto& hasher = get_hasher<I>();
-        hash_buckets& buckets = get_buckets<I>();
-        size_t bucket_count = buckets.size();
-        auto hash = hasher(node->value());
-
-        if (!bucket_count) {
-            buckets.resize(first_hashes_resize, nullptr);
-            bucket_count = first_hashes_resize;
-        } else if (static_cast<double>(m_size) / static_cast<double>(bucket_count) >= 0.8) {
-            bucket_count *= 2;
-            rehash<I>(bucket_count);
-        }
-
-        size_t index = hash % buckets.size();
-        base_type*& bucket = buckets.at(index);
-
-        if constexpr (std::tuple_element_t<I, hasher_types>::hashed_unique()) {
-            base_type* curr = bucket;
-            base_type* prev = curr;
-            while (curr) {
-                if (hasher(curr->node()->value(), node->value())) {
-                    return false;
-                }
-                prev = curr;
-                curr = curr->template next_hash<I>();
-            }
-        }
-        hints.m_bucket = &bucket;
-        hints.m_hash = hash;
-        return true;
-    }
-
-    template <int I>
-    void hasher_create_premodify_cache(node_type* node, hasher_premodify_cache_type& cache)
-    {
-        const auto& hasher = get_hasher<I>();
-        hash_buckets& buckets = get_buckets<I>();
-        base_type* base = node->get_base();
-        auto hash = base->template hash<I>();
-        size_t bucket_count = buckets.size();
-        if (!bucket_count) {
-            return;
-        }
-        auto index = hash % bucket_count;
-
-        base_type*& bucket = buckets.at(index);
-        base_type* cur_node = bucket;
-        base_type* prev_node = cur_node;
-        while (cur_node) {
-            if (cur_node->template hash<I>() == hash && hasher(cur_node->node()->value(), node->value())) {
-                if (cur_node == prev_node) {
-                    cache.m_bucket = &bucket;
-                    cache.m_is_head = true;
-                } else {
-                    cache.m_prev = prev_node;
-                    cache.m_is_head = false;
-                }
-                break;
-            }
-            prev_node = cur_node;
-            cur_node = cur_node->template next_hash<I>();
-        }
-    }
-
-    template <int I>
-    bool hasher_erase_if_modified(node_type* node, const hasher_premodify_cache_type& cache)
-    {
-        const auto& hasher = get_hasher<I>();
-        base_type* base = node->get_base();
-        if (hasher(node->value()) != base->template hash<I>()) {
-            if (cache.m_is_head) {
-                *cache.m_bucket = nullptr;
-            } else {
-                cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
-            }
-            return true;
-        }
-        return false;
-    }
-
-    template <int I>
-    void insert_node_hash(node_type* node, const hasher_insert_hints_type& hints)
-    {
-        base_type* node_base = node->get_base();
-        node_base->template set_hash<I>(hints.m_hash);
-        node_base->template set_next_hashptr<I>(*hints.m_bucket);
-        *hints.m_bucket = node_base;
-    }
-
-
-    template <int I, typename H>
-    node_type* find_hash(const H::hash_type& hash_key) const
-    {
-        const auto& hasher = get_hasher<I>();
-        size_t hash = hasher(hash_key);
-        const hash_buckets& buckets = get_buckets<I>();
-        size_t bucket_count = buckets.size();
-        if (!bucket_count) {
-            return nullptr;
-        }
-        auto* node = buckets.at(hash % bucket_count);
-        while (node) {
-            if (node->template hash<I>() == hash) {
-                if (hasher(node->node()->value(), hash_key)) {
-                    return node->node();
-                }
-            }
-            node = node->template next_hash<I>();
-        }
-        return nullptr;
-    }
 
     template <int I, typename H>
     node_type* do_find(const H::hash_type& hash_key) const
