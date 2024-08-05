@@ -21,6 +21,25 @@
 #include <vector>
 
 namespace tmi {
+
+template <typename T, int ComparatorSize, int NodeSize>
+struct hasher_insert_hints {
+    using node_type = tminode<T, ComparatorSize, NodeSize>;
+    using base_type = node_type::base_type;
+    size_t m_hash{0};
+    base_type** m_bucket{nullptr};
+};
+
+template <typename T, int ComparatorSize, int NodeSize>
+struct hasher_premodify_cache {
+    using node_type = tminode<T, ComparatorSize, NodeSize>;
+    using base_type = node_type::base_type;
+    bool m_is_head{false};
+    base_type** m_bucket{nullptr};
+    base_type* m_prev{nullptr};
+};
+
+
 using namespace detail;
 
 template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
@@ -38,6 +57,8 @@ class tmi
     using hash_buckets = std::vector<base_type*>;
 
     static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
+    using hasher_insert_hints_type = hasher_insert_hints<T, num_comparators, num_hashers>;
+    using hasher_premodify_cache_type = hasher_premodify_cache<T, num_comparators, num_hashers>;
 
     struct comparator_insert_hints {
         base_type* m_parent{nullptr};
@@ -45,17 +66,7 @@ class tmi
     };
     using comparator_hints_array = std::array<comparator_insert_hints, num_comparators>;
 
-    struct hasher_premodify_cache {
-        bool m_is_head{false};
-        base_type** m_bucket{nullptr};
-        base_type* m_prev{nullptr};
-    };
-
-    struct hasher_insert_hints {
-        size_t m_hash{0};
-        base_type** m_bucket{nullptr};
-    };
-    using hasher_hints_array = std::array<hasher_insert_hints, num_hashers>;
+    using hasher_hints_array = std::array<hasher_insert_hints_type, num_hashers>;
 
     static constexpr size_t first_hashes_resize = 2048;
 
@@ -594,7 +605,7 @@ class tmi
         size if empty. Then find calculate the bucket and insert there.
     */
     template <int I>
-    bool preinsert_node_hash(node_type* node, hasher_insert_hints& hints)
+    bool preinsert_node_hash(node_type* node, hasher_insert_hints_type& hints)
     {
         const auto& hasher = get_hasher<I>();
         hash_buckets& buckets = get_buckets<I>();
@@ -629,7 +640,7 @@ class tmi
     }
 
     template <int I>
-    void hasher_create_premodify_cache(node_type* node, hasher_premodify_cache& cache)
+    void hasher_create_premodify_cache(node_type* node, hasher_premodify_cache_type& cache)
     {
         const auto& hasher = get_hasher<I>();
         hash_buckets& buckets = get_buckets<I>();
@@ -661,7 +672,7 @@ class tmi
     }
 
     template <int I>
-    bool hasher_erase_if_modified(node_type* node, const hasher_premodify_cache& cache)
+    bool hasher_erase_if_modified(node_type* node, const hasher_premodify_cache_type& cache)
     {
         const auto& hasher = get_hasher<I>();
         base_type* base = node->get_base();
@@ -677,7 +688,7 @@ class tmi
     }
 
     template <int I>
-    void insert_node_hash(node_type* node, const hasher_insert_hints& hints)
+    void insert_node_hash(node_type* node, const hasher_insert_hints_type& hints)
     {
         base_type* node_base = node->get_base();
         node_base->template set_hash<I>(hints.m_hash);
@@ -880,7 +891,7 @@ class tmi
             bool m_do_reinsert{false};
         };
 
-        using hasher_premodify_cache_array = std::array<hasher_premodify_cache, num_hashers>;
+        using hasher_premodify_cache_array = std::array<hasher_premodify_cache_type, num_hashers>;
         using hasher_modify_actions_array = std::array<hash_modify_actions, num_hashers>;
         using comparator_modify_actions_array = std::array<comparator_modify_actions, num_comparators>;
 
