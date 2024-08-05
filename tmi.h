@@ -44,7 +44,13 @@ class tmi
     using hasher_hints_array = std::array<hasher_insert_hints_type, num_hashers>;
 
     template <int I>
-    using sort_iterator_type = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>>::iterator;
+    using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>>;
+
+    template <int I>
+    using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>>;
+
+    template <int I>
+    using sort_iterator_type = tmi_comparator_type<I>::iterator;
 
     node_type* m_begin{nullptr};
     node_type* m_end{nullptr};
@@ -109,33 +115,25 @@ class tmi
     template <int I>
     const auto& get_hasher_instance() const
     {
-        using Hasher = std::tuple_element_t<I, hasher_types>;
-        using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
-        return *static_cast<const tmi_hasher_type*>(std::get<I>(m_hasher_instances));
+        return *static_cast<const tmi_hasher_type<I>*>(std::get<I>(m_hasher_instances));
     }
 
     template <int I>
     auto& get_hasher_instance()
     {
-        using Hasher = std::tuple_element_t<I, hasher_types>;
-        using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
-        return *static_cast<tmi_hasher_type*>(std::get<I>(m_hasher_instances));
+        return *static_cast<tmi_hasher_type<I>*>(std::get<I>(m_hasher_instances));
     }
 
     template <int I>
     const auto& get_comparator_instance() const
     {
-        using Comparator = std::tuple_element_t<I, comparator_types>;
-        using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
-        return *static_cast<const tmi_comparator_type*>(std::get<I>(m_comparator_instances));
+        return *static_cast<const tmi_comparator_type<I>*>(std::get<I>(m_comparator_instances));
     }
 
     template <int I>
     auto& get_comparator_instance()
     {
-        using Comparator = std::tuple_element_t<I, comparator_types>;
-        using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
-        return *static_cast<tmi_comparator_type*>(std::get<I>(m_comparator_instances));
+        return *static_cast<tmi_comparator_type<I>*>(std::get<I>(m_comparator_instances));
     }
 
 
