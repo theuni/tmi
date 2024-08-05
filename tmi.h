@@ -1172,9 +1172,10 @@ public:
         }
         m_begin = m_end = nullptr;
         m_roots = {};
-        for (auto& buckets : m_buckets) {
-            buckets.clear();
-        }
+
+        foreach_hasher([this]<int I>(std::nullptr_t) {
+            get_hasher_instance<I>().clear();
+         }, nullptr);
     }
 
     iterator erase(const_iterator it)

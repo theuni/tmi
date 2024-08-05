@@ -229,6 +229,12 @@ public:
         }
         return nullptr;
     }
+
+    void clear()
+    {
+        m_buckets.clear();
+    }
+
 };
 
 } // namespace tmi
