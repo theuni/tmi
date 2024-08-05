@@ -52,7 +52,7 @@ public:
 
     Hasher m_hasher;
     hash_buckets m_buckets;
-
+    size_t m_size = 0;
 
     static base_type* next_hash(base_type* base)
     {
@@ -116,6 +116,7 @@ public:
                 } else {
                     prev_node->template set_next_hashptr<I>(cur_node->template next_hash<I>());
                 }
+                m_size--;
                 break;
             }
             prev_node = cur_node;
@@ -135,7 +136,7 @@ public:
         if (!bucket_count) {
             m_buckets.resize(first_hashes_resize, nullptr);
             bucket_count = first_hashes_resize;
-        } else if (static_cast<double>(m_buckets.size()) / static_cast<double>(bucket_count) >= 0.8) {
+        } else if (static_cast<double>(m_size) / static_cast<double>(bucket_count) >= 0.8) {
             bucket_count *= 2;
             rehash(bucket_count);
         }
@@ -197,6 +198,7 @@ public:
             } else {
                 cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
             }
+            m_size--;
             return true;
         }
         return false;
@@ -208,6 +210,7 @@ public:
         node_base->template set_hash<I>(hints.m_hash);
         node_base->template set_next_hashptr<I>(*hints.m_bucket);
         *hints.m_bucket = node_base;
+        m_size++;
     }
 
 
