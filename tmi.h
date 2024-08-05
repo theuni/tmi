@@ -12,6 +12,7 @@
 
 #include "tminode.h"
 #include "tminode_detail.h"
+#include "tmi_hasher.h"
 
 #include <algorithm>
 #include <array>
@@ -21,24 +22,6 @@
 #include <vector>
 
 namespace tmi {
-
-template <typename T, int ComparatorSize, int NodeSize>
-struct hasher_insert_hints {
-    using node_type = tminode<T, ComparatorSize, NodeSize>;
-    using base_type = node_type::base_type;
-    size_t m_hash{0};
-    base_type** m_bucket{nullptr};
-};
-
-template <typename T, int ComparatorSize, int NodeSize>
-struct hasher_premodify_cache {
-    using node_type = tminode<T, ComparatorSize, NodeSize>;
-    using base_type = node_type::base_type;
-    bool m_is_head{false};
-    base_type** m_bucket{nullptr};
-    base_type* m_prev{nullptr};
-};
-
 
 using namespace detail;
 
@@ -55,7 +38,7 @@ class tmi
     using base_type = node_type::base_type;
     using Color = typename base_type::Color;
     using hash_buckets = std::vector<base_type*>;
-
+    using hasher_base = tmi_hasher_base<T, num_comparators, num_hashers>;
     static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
     using hasher_insert_hints_type = hasher_insert_hints<T, num_comparators, num_hashers>;
     using hasher_premodify_cache_type = hasher_premodify_cache<T, num_comparators, num_hashers>;
@@ -79,6 +62,8 @@ class tmi
 
     comparator_types m_comparators;
     hasher_types m_hashers;
+
+    std::array<std::unique_ptr<hasher_base>, num_hashers> m_hasher_instances;
 
     node_allocator_type m_alloc;
 
@@ -143,6 +128,22 @@ class tmi
     const auto& get_hasher() const
     {
         return std::get<I>(m_hashers);
+    }
+
+    template <int I>
+    const auto& get_hasher_instance() const
+    {
+        using Hasher = std::tuple_element_t<I, hasher_types>;
+        using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
+        return *static_cast<const tmi_hasher_type*>(std::get<I>(m_hasher_instances).get());
+    }
+
+    template <int I>
+    auto& get_hasher_instance()
+    {
+        using Hasher = std::tuple_element_t<I, hasher_types>;
+        using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
+        return *static_cast<tmi_hasher_type*>(std::get<I>(m_hasher_instances).get());
     }
 
     template <int I>
@@ -723,7 +724,7 @@ class tmi
     node_type* do_find(const H::hash_type& hash_key) const
     {
         if constexpr (std::is_same_v<H, typename std::tuple_element_t<I, hasher_types>>) {
-            return find_hash<I, H>(hash_key);
+            return get_hasher_instance<I>().find_hash(hash_key);
         } else if constexpr (I + 1 < num_hashers) {
             return do_find<I + 1, H>(hash_key);
         } else {
@@ -823,7 +824,7 @@ class tmi
         bool can_insert;
 
         can_insert = get_foreach_hasher([this]<int I>(node_type* node, auto& hints) {
-            if (!preinsert_node_hash<I>(node, hints)) return false;
+            if (!get_hasher_instance<I>().preinsert_node_hash(node, hints)) return false;
             return true;
         }, node, hash_hints);
 
@@ -837,7 +838,7 @@ class tmi
         if (!can_insert) return false;
 
         foreach_hasher([this]<int I>(node_type* node, auto& hints) {
-            insert_node_hash<I>(node, hints);
+            get_hasher_instance<I>().insert_node_hash(node, hints);
         }, node, hash_hints);
 
         foreach_comparator([this]<int I>(node_type* node, auto& hints) {
@@ -876,7 +877,7 @@ class tmi
         }, node);
 
         foreach_hasher([this]<int I>(node_type* node) {
-            hash_remove_direct<I>(node->get_base());
+            get_hasher_instance<I>().hash_remove_direct(node->get_base());
         }, node);
         do_erase_cleanup(node);
     }
@@ -899,7 +900,7 @@ class tmi
         // Create a cache of the pre-modified hash buckets
         hasher_premodify_cache_array hash_cache;
         foreach_hasher([this]<int I>(node_type* node, auto& cache) {
-            hasher_create_premodify_cache<I>(node, cache);
+            get_hasher_instance<I>().hasher_create_premodify_cache(node, cache);
         }, node, hash_cache);
 
 
@@ -910,7 +911,7 @@ class tmi
 
         // Erase modified hashes
         foreach_hasher([this]<int I>(node_type* node, auto& modify, const auto& cache) {
-            modify.m_do_reinsert = hasher_erase_if_modified<I>(node, cache);
+            modify.m_do_reinsert = get_hasher_instance<I>().hasher_erase_if_modified(node, cache);
          }, node, hash_modify, hash_cache);
 
 
@@ -927,7 +928,7 @@ class tmi
 
         // Check to see if any new hashes can be safely inserted
         bool insertable = get_foreach_hasher([this]<int I>(node_type* node, const auto& modify, auto& hints) {
-            if (modify.m_do_reinsert) return preinsert_node_hash<I>(node, hints);
+            if (modify.m_do_reinsert) return get_hasher_instance<I>().preinsert_node_hash(node, hints);
             return true;
         }, node, hash_modify, hash_hints);
 
@@ -945,7 +946,7 @@ class tmi
         }
 
         foreach_hasher([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
-            if (modify.m_do_reinsert) insert_node_hash<I>(node, hints);
+            if (modify.m_do_reinsert) get_hasher_instance<I>().insert_node_hash(node, hints);
             return true;
         },
                        node, hash_modify, hash_hints);
@@ -1130,8 +1131,14 @@ public:
         bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
     };
 
-
-    tmi() = default;
+    tmi()
+    {
+        foreach_hasher([this]<int I>(std::nullptr_t, std::unique_ptr<hasher_base>& hasher) {
+            using Hasher = std::tuple_element_t<I, hasher_types>;
+            using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
+            hasher = std::make_unique<tmi_hasher_type>();
+         }, nullptr, m_hasher_instances);
+    }
 
     tmi(const allocator_type& alloc) : m_alloc(alloc) {}
 
