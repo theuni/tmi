@@ -536,20 +536,6 @@ class tmi
 //===----------------------------------------------------------------------===//
 
     /*
-        Replace the current head with the new node and set the
-        node's next pointer to what previously occupied the head
-    */
-
-    template <int I>
-    void insert_in_buckets_unchecked(hash_buckets& buckets, base_type* node)
-    {
-        size_t index = node->template hash<I>() % buckets.size();
-        base_type*& bucket = buckets.at(index);
-        node->template set_next_hashptr<I>(bucket);
-        bucket = node;
-    }
-
-    /*
         Create new buckets, iterate through the old ones moving them to
         their updated indicies in the new buckets, then replace the old
         with the new
@@ -563,7 +549,10 @@ class tmi
             base_type* cur_node = bucket;
             while (cur_node) {
                 base_type* next_node = cur_node->template next_hash<I>();
-                insert_in_buckets_unchecked<I>(new_buckets, cur_node);
+                size_t index = cur_node->template hash<I>() % new_buckets.size();
+                base_type*& new_bucket = new_buckets.at(index);
+                cur_node->template set_next_hashptr<I>(new_bucket);
+                new_bucket = cur_node;
                 cur_node = next_node;
             }
         }
