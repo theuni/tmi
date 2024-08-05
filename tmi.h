@@ -13,6 +13,7 @@
 #include "tminode.h"
 #include "tminode_detail.h"
 #include "tmi_hasher.h"
+#include "tmi_comparator.h"
 
 #include <algorithm>
 #include <array>
@@ -24,14 +25,6 @@
 namespace tmi {
 
 using namespace detail;
-
-template <typename T, int ComparatorSize, int NodeSize>
-struct comparator_insert_hints {
-    using node_type = tminode<T, ComparatorSize, NodeSize>;
-    using base_type = node_type::base_type;
-    base_type* m_parent{nullptr};
-    bool m_inserted_left{false};
-};
 
 template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
 class tmi
@@ -45,6 +38,7 @@ class tmi
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using base_type = node_type::base_type;
     using Color = typename base_type::Color;
+    using comparator_base = tmi_comparator_base<T, num_comparators, num_hashers>;
     using hasher_base = tmi_hasher_base<T, num_comparators, num_hashers>;
     static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
     using hasher_insert_hints_type = hasher_insert_hints<T, num_comparators, num_hashers>;
@@ -63,6 +57,7 @@ class tmi
 
     comparator_types m_comparators;
 
+    std::array<comparator_base*, num_comparators> m_comparator_instances;
     std::array<hasher_base*, num_hashers> m_hasher_instances;
 
     node_allocator_type m_alloc;
@@ -138,6 +133,22 @@ class tmi
         using Hasher = std::tuple_element_t<I, hasher_types>;
         using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
         return *static_cast<tmi_hasher_type*>(std::get<I>(m_hasher_instances));
+    }
+
+    template <int I>
+    const auto& get_comparator_instance() const
+    {
+        using Comparator = std::tuple_element_t<I, comparator_types>;
+        using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
+        return *static_cast<const tmi_comparator_type*>(std::get<I>(m_comparator_instances));
+    }
+
+    template <int I>
+    auto& get_comparator_instance()
+    {
+        using Comparator = std::tuple_element_t<I, comparator_types>;
+        using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
+        return *static_cast<tmi_comparator_type*>(std::get<I>(m_comparator_instances));
     }
 
     template <int I>
@@ -641,7 +652,7 @@ class tmi
         if (!can_insert) return false;
 
         can_insert = get_foreach_comparator([this]<int I>(node_type* node, auto& hints) {
-            if (!preinsert_node_comparator<I>(node, hints)) return false;
+            if (!get_comparator_instance<I>().preinsert_node_comparator(node, hints)) return false;
             return true;
         }, node, comp_hints);
 
@@ -652,7 +663,7 @@ class tmi
         }, node, hash_hints);
 
         foreach_comparator([this]<int I>(node_type* node, auto& hints) {
-            insert_node_comparator<I>(node, hints);
+            get_comparator_instance<I>().insert_node_comparator(node, hints);
         }, node, comp_hints);
 
         if (m_begin == nullptr) {
@@ -683,7 +694,7 @@ class tmi
     void do_erase(node_type* node)
     {
         foreach_comparator([this]<int I>(node_type* node) {
-            tree_remove<I>(get_root_base<I>(), node->get_base());
+            get_comparator_instance<I>().tree_remove(get_root_base<I>(), node->get_base());
         }, node);
 
         foreach_hasher([this]<int I>(node_type* node) {
@@ -727,7 +738,7 @@ class tmi
 
         // Erase modified sorts
         foreach_comparator([this]<int I>(node_type* node, auto& modify) {
-            modify.m_do_reinsert = comparator_erase_if_modified<I>(node);
+            modify.m_do_reinsert = get_comparator_instance<I>().comparator_erase_if_modified(node);
         }, node, comp_modify);
 
         // At this point the node has been removed from all buckets and trees.
@@ -745,7 +756,7 @@ class tmi
         // Check to see if any new sorts can be safely inserted
         if (insertable) {
             insertable = get_foreach_comparator([this]<int I>(node_type* node, const auto& modify, auto& hints) {
-                if (modify.m_do_reinsert) return preinsert_node_comparator<I>(node, hints);
+                if (modify.m_do_reinsert) return get_comparator_instance<I>().preinsert_node_comparator(node, hints);
                 return true;
             }, node, comp_modify, comp_hints);
         }
@@ -762,7 +773,7 @@ class tmi
                        node, hash_modify, hash_hints);
 
         foreach_comparator([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
-            if (modify.m_do_reinsert) insert_node_comparator<I>(node, hints);
+            if (modify.m_do_reinsert) get_comparator_instance<I>().insert_node_comparator(node, hints);
             return true;
         },
                            node, comp_modify, comp_hints);
@@ -948,6 +959,14 @@ public:
             using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
             hasher = new tmi_hasher_type();
          }, nullptr, m_hasher_instances);
+
+
+        foreach_comparator([this]<int I>(std::nullptr_t, comparator_base*& hasher) {
+            using Comparator = std::tuple_element_t<I, comparator_types>;
+            using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
+            hasher = new tmi_comparator_type();
+         }, nullptr, m_comparator_instances);
+
     }
 
     tmi(const allocator_type& alloc) : m_alloc(alloc) {}
@@ -962,6 +981,13 @@ public:
             tmi_hasher_type* to_delete = static_cast<tmi_hasher_type*>(hasher);
             delete to_delete;
          }, nullptr, m_hasher_instances);
+
+        foreach_comparator([this]<int I>(std::nullptr_t, comparator_base*& comparator) {
+            using Comparator = std::tuple_element_t<I, comparator_types>;
+            using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
+            tmi_comparator_type* to_delete = static_cast<tmi_comparator_type*>(comparator);
+            delete to_delete;
+         }, nullptr, m_comparator_instances);
 
     }
 
@@ -994,6 +1020,11 @@ public:
         foreach_hasher([this]<int I>(std::nullptr_t) {
             get_hasher_instance<I>().clear();
          }, nullptr);
+
+        foreach_hasher([this]<int I>(std::nullptr_t) {
+            get_comparator_instance<I>().clear();
+         }, nullptr);
+
     }
 
     iterator erase(const_iterator it)
