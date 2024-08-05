@@ -37,6 +37,8 @@ class tmi
     using Color = typename base_type::Color;
     using hash_buckets = std::vector<base_type*>;
 
+    static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
+
     struct comparator_insert_hints {
         base_type* m_parent{nullptr};
         bool m_inserted_left{false};
@@ -52,7 +54,7 @@ class tmi
     static constexpr size_t first_hashes_resize = 2048;
 
     base_type m_roots;
-    std::array<hash_buckets, num_hashers> m_buckets{hash_buckets{}};
+    std::array<hash_buckets, num_hashers> m_buckets{};
 
     node_type* m_begin{nullptr};
     node_type* m_end{nullptr};
@@ -92,7 +94,7 @@ class tmi
     template <int I = 0, class Callable, typename Node, typename... Args>
     static void foreach_comparator(Callable&& func, Node* node, Args&&... args)
     {
-        if (num_comparators) {
+        if constexpr (num_comparators) {
             func.template operator()<I>(node, std::get<I>(args)...);
         }
         if constexpr (I + 1 < num_comparators) {
@@ -103,7 +105,7 @@ class tmi
     template <int I = 0, class Callable, typename Node, typename... Args>
     static bool get_foreach_comparator(Callable&& func, Node* node, Args&&... args)
     {
-        if (num_comparators) {
+        if constexpr (num_comparators) {
             if (!func.template operator()<I>(node, std::get<I>(args)...)) {
                 return false;
             }
