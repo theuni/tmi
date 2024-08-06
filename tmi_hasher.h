@@ -421,6 +421,24 @@ public:
         return iterator(nullptr, &m_buckets, 0);
     }
 
+    iterator erase(iterator it)
+    {
+        node_type* node = it.m_node;
+        if (!node) return iterator(nullptr, &m_buckets, 0);
+        size_t hash = node->get_base()->template hash<I>();
+        size_t bucket = hash % m_buckets.size();
+        base_type* next = get_next_hash(node->get_base());
+        if (!next) {
+            for (; bucket < m_buckets.size(); ++bucket) {
+                next = m_buckets.at(bucket);
+            }
+        }
+        if (!node) return iterator(nullptr, &m_buckets, 0);
+        iterator ret(next->node(), &m_buckets, bucket);
+
+        m_parent.erase(node);
+        return ret;
+    }
 };
 
 } // namespace tmi

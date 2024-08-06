@@ -684,6 +684,16 @@ public:
         return end();
     }
 
+    iterator erase(iterator it)
+    {
+        node_type* node = it.m_node;
+        if (!node) return iterator(nullptr);
+        node = tree_next(node->get_base())->node();
+        iterator ret(node);
+        m_parent.erase(node);
+        return ret;
+    }
+
 };
 
 } // namespace tmi

@@ -211,7 +211,7 @@ private:
         m_size--;
     }
 
-    void do_erase(node_type* node)
+    void erase(node_type* node)
     {
         foreach_comparator([this]<int I>(node_type* node) {
             get_comparator_instance<I>().tree_remove(node->get_base());
