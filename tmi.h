@@ -152,25 +152,25 @@ private:
         }
     }
 
-    bool do_insert(node_type* node)
+    node_type* do_insert(node_type* node)
     {
         comparator_hints_array comp_hints;
         hasher_hints_array hash_hints;
         bool can_insert;
-
-        can_insert = get_foreach_hasher([this]<int I>(node_type* node, auto& hints) {
-            if (!get_hasher_instance<I>().preinsert_node_hash(node, hints)) return false;
-            return true;
+        node_type* conflict = nullptr;
+        can_insert = get_foreach_hasher([this, &conflict]<int I>(node_type* node, auto& hints) {
+            conflict = get_hasher_instance<I>().preinsert_node_hash(node, hints);
+            return conflict == nullptr;
         }, node, hash_hints);
 
-        if (!can_insert) return false;
+        if (!can_insert) return conflict;
 
-        can_insert = get_foreach_comparator([this]<int I>(node_type* node, auto& hints) {
-            if (!get_comparator_instance<I>().preinsert_node_comparator(node, hints)) return false;
-            return true;
+        can_insert = get_foreach_comparator([this, &conflict]<int I>(node_type* node, auto& hints) {
+            conflict = get_comparator_instance<I>().preinsert_node_comparator(node, hints);
+            return conflict == nullptr;
         }, node, comp_hints);
 
-        if (!can_insert) return false;
+        if (!can_insert) return conflict;
 
         foreach_hasher([this]<int I>(node_type* node, auto& hints) {
             get_hasher_instance<I>().insert_node_hash(node, hints);
@@ -188,7 +188,7 @@ private:
         }
 
         m_size++;
-        return true;
+        return nullptr;
     }
 
     void do_erase_cleanup(node_type* node)
@@ -263,14 +263,14 @@ private:
 
         // Check to see if any new hashes can be safely inserted
         bool insertable = get_foreach_hasher([this]<int I>(node_type* node, const auto& modify, auto& hints) {
-            if (modify.m_do_reinsert) return get_hasher_instance<I>().preinsert_node_hash(node, hints);
+            if (modify.m_do_reinsert) return get_hasher_instance<I>().preinsert_node_hash(node, hints) == nullptr;
             return true;
         }, node, hash_modify, hash_hints);
 
         // Check to see if any new sorts can be safely inserted
         if (insertable) {
             insertable = get_foreach_comparator([this]<int I>(node_type* node, const auto& modify, auto& hints) {
-                if (modify.m_do_reinsert) return get_comparator_instance<I>().preinsert_node_comparator(node, hints);
+                if (modify.m_do_reinsert) return get_comparator_instance<I>().preinsert_node_comparator(node, hints) == nullptr;
                 return true;
             }, node, comp_modify, comp_hints);
         }
@@ -448,13 +448,13 @@ public:
     {
         node_type* node = m_alloc.allocate(1);
         node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, std::forward<Args>(args)...);
-        bool inserted = do_insert(node);
-        if (!inserted) {
-            node = nullptr;
+        node_type* conflict = do_insert(node);
+        if (conflict != nullptr) {
             std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
             std::allocator_traits<node_allocator_type>::deallocate(m_alloc, node, 1);
+            return std::make_pair(iterator(conflict), false);
         }
-        return std::make_pair(iterator(node), inserted);
+        return std::make_pair(iterator(node), true);
     }
 
     void clear()

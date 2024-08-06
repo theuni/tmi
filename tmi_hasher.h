@@ -132,7 +132,7 @@ class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, NodeSize>
         First rehash if necessary, using first_hashes_resize as the initial
         size if empty. Then find calculate the bucket and insert there.
     */
-    bool preinsert_node_hash(node_type* node, insert_hints_type& hints)
+    node_type* preinsert_node_hash(node_type* node, insert_hints_type& hints)
     {
         size_t bucket_count = m_buckets.size();
         auto hash = m_hasher(node->value());
@@ -153,7 +153,7 @@ class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, NodeSize>
             base_type* prev = curr;
             while (curr) {
                 if (m_hasher(curr->node()->value(), node->value())) {
-                    return false;
+                    return curr->node();
                 }
                 prev = curr;
                 curr = curr->template next_hash<I>();
@@ -161,7 +161,7 @@ class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, NodeSize>
         }
         hints.m_bucket = &bucket;
         hints.m_hash = hash;
-        return true;
+        return nullptr;
     }
 
     void hasher_create_premodify_cache(node_type* node, premodify_cache& cache)

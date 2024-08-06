@@ -469,7 +469,7 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, NodeSize>
 //===----------------------------------------------------------------------===//
 
 
-    bool preinsert_node_comparator(node_type* node, insert_hints_type& hints)
+    node_type* preinsert_node_comparator(node_type* node, insert_hints_type& hints)
     {
         base_type* parent = nullptr;
         base_type* curr = get_root_base();
@@ -486,7 +486,7 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, NodeSize>
                     curr = curr->template right<I>();
                     inserted_left = false;
                 } else {
-                    return false;
+                    return curr->node();
                 }
             } else {
                 if (m_comparator(node->value(), curr->node()->value())) {
@@ -500,7 +500,7 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, NodeSize>
         }
         hints.m_inserted_left = inserted_left;
         hints.m_parent = parent;
-        return true;
+        return nullptr;
     }
 
     void insert_node_comparator(node_type* node, const insert_hints_type& hints)
