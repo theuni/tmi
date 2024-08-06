@@ -502,48 +502,48 @@ public:
         return false;
     }
 
-    class sort_iterator
+    class iterator
     {
         node_type* m_node{};
 
     public:
-        friend class iterator;
+        //friend class iterator;
         //friend class tmi;
         typedef T value_type;
         typedef T* pointer;
         typedef T& reference;
         using element_type = T;
-        sort_iterator() = default;
-        sort_iterator(node_type* node) : m_node(node) {}
+        iterator() = default;
+        iterator(node_type* node) : m_node(node) {}
         T& operator*() const { return m_node->value(); }
         T* operator->() const { return &m_node->value(); }
-        sort_iterator& operator++()
+        iterator& operator++()
         {
             m_node = tree_next(m_node->get_base())->node();
             return *this;
         }
-        sort_iterator& operator--()
+        iterator& operator--()
         {
             m_node = tree_prev(m_node->get_base())->node();
             return *this;
         }
-        sort_iterator operator++(int)
+        iterator operator++(int)
         {
-            sort_iterator copy(m_node);
+            iterator copy(m_node);
             ++(*this);
             return copy;
         }
-        sort_iterator operator--(int)
+        iterator operator--(int)
         {
-            sort_iterator copy(m_node);
+            iterator copy(m_node);
             --(*this);
             return copy;
         }
-        bool operator==(sort_iterator rhs) const { return m_node == rhs.m_node; }
-        bool operator!=(sort_iterator rhs) const { return m_node != rhs.m_node; }
+        bool operator==(iterator rhs) const { return m_node == rhs.m_node; }
+        bool operator!=(iterator rhs) const { return m_node != rhs.m_node; }
     };
 
-    class const_sort_iterator
+    class const_iterator
     {
         const node_type* m_node{};
 
@@ -552,34 +552,34 @@ public:
         typedef const T* pointer;
         typedef const T& reference;
         using element_type = const T;
-        const_sort_iterator() = default;
-        const_sort_iterator(const node_type* node) : m_node(node) {}
+        const_iterator() = default;
+        const_iterator(const node_type* node) : m_node(node) {}
         const T& operator*() const { return m_node->value(); }
         const T* operator->() const { return &m_node->value(); }
-        const_sort_iterator& operator++()
+        const_iterator& operator++()
         {
             m_node = tree_next(m_node->get_base())->m_node();
             return *this;
         }
-        const_sort_iterator& operator--()
+        const_iterator& operator--()
         {
             m_node = tree_prev(m_node->get_base())->node();
             return *this;
         }
-        const_sort_iterator operator++(int)
+        const_iterator operator++(int)
         {
-            const_sort_iterator copy(m_node);
+            const_iterator copy(m_node);
             ++(*this);
             return copy;
         }
-        const_sort_iterator operator--(int)
+        const_iterator operator--(int)
         {
-            const_sort_iterator copy(m_node);
+            const_iterator copy(m_node);
             --(*this);
             return copy;
         }
-        bool operator==(const_sort_iterator rhs) const { return m_node == rhs.m_node; }
-        bool operator!=(const_sort_iterator rhs) const { return m_node != rhs.m_node; }
+        bool operator==(const_iterator rhs) const { return m_node == rhs.m_node; }
+        bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
     };
 
     void clear()
@@ -587,17 +587,17 @@ public:
         m_roots = {};
     }
 
-    sort_iterator begin() const
+    iterator begin() const
     {
         base_type* root = get_root_base();
         if (root == nullptr)
-            return sort_iterator(nullptr);
-        return sort_iterator(tree_min<I>(root)->node());
+            return iterator(nullptr);
+        return iterator(tree_min(root)->node());
     }
 
-    sort_iterator end() const
+    iterator end() const
     {
-        return sort_iterator(nullptr);
+        return iterator(nullptr);
     }
 
 };

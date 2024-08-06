@@ -24,6 +24,7 @@ using namespace detail;
 template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
 class tmi
 {
+public:
     using allocator_type = Allocator;
     using comparator_types = Comparators::comparator_types;
     using hasher_types = Hashers::hasher_types;
@@ -50,8 +51,9 @@ class tmi
     using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>>;
 
     template <int I>
-    using sort_iterator_type = tmi_comparator_type<I>::iterator;
+    using sort_iterator = tmi_comparator_type<I>::iterator;
 
+private:
     node_type* m_begin{nullptr};
     node_type* m_end{nullptr};
     size_t m_size{0};
@@ -311,7 +313,7 @@ public:
         using element_type = T;
         iterator() = default;
         template <int I>
-        iterator(sort_iterator_type<I> it) : m_node(it.m_node)
+        iterator(sort_iterator<I> it) : m_node(it.m_node)
         {
         }
         iterator(node_type* node) : m_node(node) {}
@@ -490,13 +492,13 @@ public:
     }
 
     template <int I>
-    sort_iterator_type<I> sort_begin() const
+    sort_iterator<I> sort_begin() const
     {
         return get_comparator_instance<I>().begin();
     }
 
     template <int I>
-    sort_iterator_type<I> sort_end() const
+    sort_iterator<I> sort_end() const
     {
         return get_comparator_instance<I>().end();
     }
