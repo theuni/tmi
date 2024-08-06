@@ -297,6 +297,19 @@ private:
         return true;
     }
 
+    template <int I = 0, typename Index>
+    auto do_project(node_type* node) const
+    {
+        if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
+            return sort_iterator<I>(node);
+        }
+        if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+            return hash_iterator<I>(node);
+        }
+        if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
+            return do_project<I + 1, Index>(node);
+        }
+    }
 
 public:
 
@@ -510,6 +523,13 @@ public:
     {
         return sizeof(node_type);
     }
+
+    template <typename Index>
+    auto project(auto it) const
+    {
+        return do_project<0, Index>(it.m_node);
+    }
+
 };
 
 } // namespace tmi
