@@ -40,13 +40,15 @@ struct tmi_hasher_base{};
 template <typename T, int ComparatorSize, int NodeSize, int I, typename Hasher>
 class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, NodeSize>
 {
-public:
     using node_type = tminode<T, ComparatorSize, NodeSize>;
     using base_type = node_type::base_type;
     using hash_buckets = std::vector<base_type*>;
     using insert_hints_type = hasher_insert_hints<T, ComparatorSize, NodeSize>;
     using premodify_cache = hasher_premodify_cache<T, ComparatorSize, NodeSize>;
     using hash_type = Hasher::hash_type;
+
+    template <typename, typename, typename, typename>
+    friend class tmi;
 
     static constexpr size_t first_hashes_resize = 2048;
 

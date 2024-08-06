@@ -35,11 +35,13 @@ struct tmi_comparator_base{};
 template <typename T, int ComparatorSize, int NodeSize, int I, typename Comparator>
 class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, NodeSize>
 {
-public:
     using node_type = tminode<T, ComparatorSize, NodeSize>;
     using base_type = node_type::base_type;
     using insert_hints_type = comparator_insert_hints<T, ComparatorSize, NodeSize>;
     using Color = typename base_type::Color;
+
+    template <typename, typename, typename, typename>
+    friend class tmi;
 
     base_type m_roots;
     Comparator m_comparator;
@@ -540,6 +542,13 @@ public:
         return false;
     }
 
+    void clear()
+    {
+        m_roots = {};
+    }
+
+public:
+
     class iterator
     {
         node_type* m_node{};
@@ -619,11 +628,6 @@ public:
         bool operator==(const_iterator rhs) const { return m_node == rhs.m_node; }
         bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
     };
-
-    void clear()
-    {
-        m_roots = {};
-    }
 
     iterator begin() const
     {
