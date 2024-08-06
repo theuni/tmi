@@ -241,6 +241,119 @@ class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, NodeSize>
     {
         m_buckets.clear();
     }
+public:
+
+    class iterator
+    {
+        node_type* m_node{};
+        const hash_buckets* m_buckets{nullptr};
+        size_t m_bucket{0};
+
+        iterator(node_type* node, const hash_buckets* buckets, size_t bucket) : m_node(node), m_buckets(buckets), m_bucket(bucket) {}
+        friend class tmi_hasher;
+    public:
+        typedef T value_type;
+        typedef T* pointer;
+        typedef T& reference;
+        using element_type = T;
+        iterator() = default;
+        T& operator*() const { return m_node->value(); }
+        T* operator->() const { return &m_node->value(); }
+        iterator& operator++()
+        {
+            base_type* next = get_next_hash(m_node->get_base());
+            while (next == nullptr) {
+                next = m_buckets->at(m_bucket++);
+            }
+            if (next == nullptr) {
+                m_node = nullptr;
+            } else {
+                m_node = next->node();
+            }
+            return *this;
+        }
+        iterator operator++(int)
+        {
+            iterator copy(m_node, m_buckets, m_bucket);
+            ++(*this);
+            return copy;
+        }
+        bool operator==(iterator rhs) const { return m_node == rhs.m_node; }
+        bool operator!=(iterator rhs) const { return m_node != rhs.m_node; }
+    };
+
+    class const_iterator
+    {
+        //TODO: Make const
+        node_type* m_node{};
+
+        const hash_buckets* m_buckets{nullptr};
+        size_t m_bucket{0};
+
+        const_iterator(node_type* node, const hash_buckets* buckets, size_t bucket) : m_node(node), m_buckets(buckets), m_bucket(bucket) {}
+        friend class tmi_hasher;
+    public:
+        typedef const T value_type;
+        typedef const T* pointer;
+        typedef const T& reference;
+        using element_type = const T;
+        const_iterator() = default;
+        const T& operator*() const { return m_node->value(); }
+        const T* operator->() const { return &m_node->value(); }
+        const_iterator& operator++()
+        {
+            base_type* next = get_next_hash(m_node->get_base());
+            while (next == nullptr) {
+                next = m_buckets->at(m_bucket++);
+            }
+            if (next == nullptr) {
+                m_node = nullptr;
+            } else {
+                m_node = next->node();
+            }
+            return *this;
+        }
+        const_iterator operator++(int)
+        {
+            const_iterator copy(m_node, m_buckets, m_bucket);
+            ++(*this);
+            return copy;
+        }
+        bool operator==(const_iterator rhs) const { return m_node == rhs.m_node; }
+        bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
+    };
+
+    iterator begin()
+    {
+        for (size_t i = 0; i < m_buckets.size(); ++i) {
+            base_type* base = m_buckets.at(i);
+            if (base) {
+                return iterator(base->node(), &m_buckets, i);
+            }
+        }
+        return iterator(nullptr, &m_buckets, 0);
+    }
+
+    const_iterator begin() const
+    {
+        for (size_t i = 0; i < m_buckets.size(); ++i) {
+            base_type* base = m_buckets.at(i);
+            if (base) {
+                return const_iterator(base->node(), &m_buckets, i);
+            }
+        }
+        return const_iterator(nullptr, m_buckets, 0);
+    }
+
+    const_iterator end() const
+    {
+        return const_iterator(nullptr, m_buckets, 0);
+    }
+
+    iterator end()
+    {
+        return iterator(nullptr, m_buckets, 0);
+    }
 
 };
 
