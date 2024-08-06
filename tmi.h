@@ -386,7 +386,7 @@ public:
         bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
     };
 
-    tmi()
+    tmi(const allocator_type& alloc = {}) :  m_alloc(alloc)
     {
         foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
             using Hasher = std::tuple_element_t<I, hasher_types>;
@@ -400,10 +400,7 @@ public:
             using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
             hasher = new tmi_comparator_type();
          }, nullptr, m_comparator_instances);
-
     }
-
-    tmi(const allocator_type& alloc) : m_alloc(alloc), tmi() {}
 
     ~tmi()
     {
