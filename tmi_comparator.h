@@ -479,7 +479,6 @@ public:
 
     bool comparator_erase_if_modified(node_type* node)
     {
-        base_type* parent = nullptr;
         base_type* base = node->get_base();
         base_type* next_ptr = nullptr;
         base_type* prev_ptr = nullptr;
