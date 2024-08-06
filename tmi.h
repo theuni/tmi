@@ -208,7 +208,7 @@ class tmi
     void do_erase(node_type* node)
     {
         foreach_comparator([this]<int I>(node_type* node) {
-            get_comparator_instance<I>().tree_remove(get_root_base<I>(), node->get_base());
+            get_comparator_instance<I>().tree_remove(node->get_base());
         }, node);
 
         foreach_hasher([this]<int I>(node_type* node) {

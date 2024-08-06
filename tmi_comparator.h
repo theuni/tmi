@@ -167,8 +167,9 @@ public:
     // Postcondition: tree_invariant(end_node->template left<I>()) == true && end_node->template left<I>()
     //                nor any of its children refer to z.  end_node->template left<I>()
     //                may be different than the value passed in as root.
-    static void tree_remove(base_type* root, base_type* z)
+    void tree_remove(base_type* z)
     {
+        base_type* root = get_root_base();
         assert(root);
         assert(z);
         // z will be removed from the tree.  Client still needs to destruct/deallocate it
@@ -492,7 +493,7 @@ public:
         bool needs_resort = ((next_ptr != nullptr && m_comparator(next_ptr->node()->value(), node->value())) ||
                              (prev_ptr != nullptr && m_comparator(node->value(), prev_ptr->node()->value())));
         if (needs_resort) {
-            tree_remove(root, base);
+            tree_remove(base);
             base->template set_parent<I>(nullptr);
             base->template set_left<I>(nullptr);
             base->template set_right<I>(nullptr);
