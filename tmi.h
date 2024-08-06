@@ -300,11 +300,9 @@ private:
     {
         if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
             return sort_iterator<I>(node);
-        }
-        if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
             return hash_iterator<I>(node);
-        }
-        if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
+        } else if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
             return do_project<I + 1, Index>(node);
         }
     }
@@ -314,11 +312,9 @@ private:
     {
         if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
             return get_comparator_instance<I>();
-        }
-        if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
             return get_hasher_instance<I>();
-        }
-        if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
+        } else if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
             return do_get<I + 1, Index>();
         }
     }
