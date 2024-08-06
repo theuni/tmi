@@ -51,6 +51,9 @@ public:
     template <int I>
     using sort_iterator = tmi_comparator_type<I>::iterator;
 
+    template <int I>
+    using hash_iterator = tmi_hasher_type<I>::iterator;
+
     template <typename, int, int, int, typename, typename>
     friend class tmi_hasher;
 
