@@ -311,6 +311,20 @@ private:
         }
     }
 
+    template <int I = 0, typename Index>
+    auto do_get() const
+    {
+        if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
+            return get_comparator_instance<I>();
+        }
+        if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+            return get_hasher_instance<I>();
+        }
+        if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
+            return do_get<I + 1, Index>();
+        }
+    }
+
 public:
 
     class iterator
@@ -528,6 +542,12 @@ public:
     auto project(auto it) const
     {
         return do_project<0, Index>(it.m_node);
+    }
+
+    template <typename Index>
+    auto get() const
+    {
+        return do_get<0, Index>();
     }
 
 };
