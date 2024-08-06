@@ -22,6 +22,7 @@ template <typename T, typename Comparators, typename Hashers, typename Allocator
 class tmi
 {
 public:
+    using parent_type = tmi<T, Comparators, Hashers, Allocator>;
     using allocator_type = Allocator;
     using comparator_types = Comparators::comparator_types;
     using hasher_types = Hashers::hasher_types;
@@ -42,10 +43,10 @@ public:
     using hasher_hints_array = std::array<hasher_insert_hints_type, num_hashers>;
 
     template <int I>
-    using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>>;
+    using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>, parent_type>;
 
     template <int I>
-    using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>>;
+    using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>, parent_type>;
 
     template <int I>
     using sort_iterator = tmi_comparator_type<I>::iterator;
@@ -414,13 +415,13 @@ public:
     {
         foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
             using hasher_instance_type = tmi_hasher_type<I>;
-            hasher = new hasher_instance_type();
+            hasher = new hasher_instance_type(*this);
          }, nullptr, m_hasher_instances);
 
 
         foreach_comparator([this]<int I>(std::nullptr_t, comparator_base*& hasher) {
             using comparator_instance_type = tmi_comparator_type<I>;
-            hasher = new comparator_instance_type();
+            hasher = new comparator_instance_type(*this);
          }, nullptr, m_comparator_instances);
     }
 

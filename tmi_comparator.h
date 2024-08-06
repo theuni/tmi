@@ -32,7 +32,7 @@ template <typename T, int ComparatorSize, int NodeSize>
 struct tmi_comparator_base{};
 
 
-template <typename T, int ComparatorSize, int NodeSize, int I, typename Comparator>
+template <typename T, int ComparatorSize, int NodeSize, int I, typename Comparator, typename Parent>
 class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, NodeSize>
 {
     using node_type = tminode<T, ComparatorSize, NodeSize>;
@@ -40,11 +40,14 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, NodeSize>
     using insert_hints_type = comparator_insert_hints<T, ComparatorSize, NodeSize>;
     using Color = typename base_type::Color;
 
-    template <typename, typename, typename, typename>
-    friend class tmi;
+    friend Parent;
+
+    Parent& m_parent;
 
     base_type m_roots;
     Comparator m_comparator;
+
+    tmi_comparator(Parent& parent) : m_parent(parent){}
 
     base_type* get_root_base() const
     {

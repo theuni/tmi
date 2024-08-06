@@ -37,7 +37,7 @@ template <typename T, int ComparatorSize, int NodeSize>
 struct tmi_hasher_base{};
 
 
-template <typename T, int ComparatorSize, int NodeSize, int I, typename Hasher>
+template <typename T, int ComparatorSize, int NodeSize, int I, typename Hasher, typename Parent>
 class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, NodeSize>
 {
     using node_type = tminode<T, ComparatorSize, NodeSize>;
@@ -47,14 +47,16 @@ class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, NodeSize>
     using premodify_cache = hasher_premodify_cache<T, ComparatorSize, NodeSize>;
     using hash_type = Hasher::hash_type;
 
-    template <typename, typename, typename, typename>
-    friend class tmi;
+    friend Parent;
 
     static constexpr size_t first_hashes_resize = 2048;
 
+    Parent& m_parent;
     Hasher m_hasher;
     hash_buckets m_buckets;
     size_t m_size = 0;
+
+    tmi_hasher(Parent& parent) : m_parent(parent){}
 
     static base_type* get_next_hash(base_type* base)
     {
