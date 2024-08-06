@@ -262,8 +262,10 @@ public:
         iterator& operator++()
         {
             base_type* next = get_next_hash(m_node->get_base());
-            while (next == nullptr) {
-                next = m_buckets->at(m_bucket++);
+            if (!next) {
+                for (; m_bucket < m_buckets->size(); ++m_bucket) {
+                    next = m_buckets->at(m_bucket);
+                }
             }
             if (next == nullptr) {
                 m_node = nullptr;
