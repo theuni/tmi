@@ -6,7 +6,6 @@
 #define TMI_H_
 
 #include "tminode.h"
-#include "tminode_detail.h"
 #include "tmi_hasher.h"
 #include "tmi_comparator.h"
 
@@ -18,8 +17,6 @@
 #include <vector>
 
 namespace tmi {
-
-using namespace detail;
 
 template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
 class tmi

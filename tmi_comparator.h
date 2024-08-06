@@ -19,8 +19,6 @@
 
 namespace tmi {
 
-using namespace detail;
-
 template <typename T, int ComparatorSize, int NodeSize>
 struct comparator_insert_hints {
     using node_type = tminode<T, ComparatorSize, NodeSize>;
