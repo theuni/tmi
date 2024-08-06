@@ -214,6 +214,20 @@ private:
         m_size--;
     }
 
+    template <typename... Args>
+    std::pair<node_type*, bool> emplace(Args&&... args)
+    {
+        node_type* node = m_alloc.allocate(1);
+        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, std::forward<Args>(args)...);
+        node_type* conflict = do_insert(node);
+        if (conflict != nullptr) {
+            std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
+            std::allocator_traits<node_allocator_type>::deallocate(m_alloc, node, 1);
+            return std::make_pair(conflict, false);
+        }
+        return std::make_pair(node, true);
+    }
+
     void erase(node_type* node)
     {
         foreach_comparator([this]<int I>(node_type* node) {
@@ -360,20 +374,6 @@ public:
             delete to_delete;
          }, nullptr, m_comparator_instances);
 
-    }
-
-    template <typename... Args>
-    std::pair<node_type*, bool> emplace(Args&&... args)
-    {
-        node_type* node = m_alloc.allocate(1);
-        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, std::forward<Args>(args)...);
-        node_type* conflict = do_insert(node);
-        if (conflict != nullptr) {
-            std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
-            std::allocator_traits<node_allocator_type>::deallocate(m_alloc, node, 1);
-            return std::make_pair(conflict, false);
-        }
-        return std::make_pair(node, true);
     }
 
     void clear()
