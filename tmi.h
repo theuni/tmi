@@ -51,6 +51,12 @@ public:
     template <int I>
     using sort_iterator = tmi_comparator_type<I>::iterator;
 
+    template <typename, int, int, int, typename, typename>
+    friend class tmi_hasher;
+
+    template <typename, int, int, int, typename, typename>
+    friend class tmi_comparator;
+
 private:
     node_type* m_begin{nullptr};
     node_type* m_end{nullptr};
