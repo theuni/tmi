@@ -56,12 +56,12 @@ class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, NodeSize>
     hash_buckets m_buckets;
     size_t m_size = 0;
 
-    static base_type* next_hash(base_type* base)
+    static base_type* get_next_hash(base_type* base)
     {
         return base->template next_hash<I>();
     }
 
-    static size_t hash(base_type* base)
+    static size_t get_hash(base_type* base)
     {
         return base->template hash<I>();
     }
