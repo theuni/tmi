@@ -413,16 +413,14 @@ public:
     tmi(const allocator_type& alloc = {}) :  m_alloc(alloc)
     {
         foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
-            using Hasher = std::tuple_element_t<I, hasher_types>;
-            using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
-            hasher = new tmi_hasher_type();
+            using hasher_instance_type = tmi_hasher_type<I>;
+            hasher = new hasher_instance_type();
          }, nullptr, m_hasher_instances);
 
 
         foreach_comparator([this]<int I>(std::nullptr_t, comparator_base*& hasher) {
-            using Comparator = std::tuple_element_t<I, comparator_types>;
-            using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
-            hasher = new tmi_comparator_type();
+            using comparator_instance_type = tmi_comparator_type<I>;
+            hasher = new comparator_instance_type();
          }, nullptr, m_comparator_instances);
     }
 
@@ -431,16 +429,14 @@ public:
         clear();
 
         foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
-            using Hasher = std::tuple_element_t<I, hasher_types>;
-            using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, Hasher>;
-            tmi_hasher_type* to_delete = static_cast<tmi_hasher_type*>(hasher);
+            using hasher_instance_type = tmi_hasher_type<I>;
+            hasher_instance_type* to_delete = static_cast<hasher_instance_type*>(hasher);
             delete to_delete;
          }, nullptr, m_hasher_instances);
 
         foreach_comparator([this]<int I>(std::nullptr_t, comparator_base*& comparator) {
-            using Comparator = std::tuple_element_t<I, comparator_types>;
-            using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, Comparator>;
-            tmi_comparator_type* to_delete = static_cast<tmi_comparator_type*>(comparator);
+            using comparator_instance_type = tmi_comparator_type<I>;
+            comparator_instance_type* to_delete = static_cast<comparator_instance_type*>(comparator);
             delete to_delete;
          }, nullptr, m_comparator_instances);
 
