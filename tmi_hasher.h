@@ -373,6 +373,14 @@ public:
         return std::make_pair(iterator(node, &m_buckets, bucket), success);
     }
 
+    template <typename Callable>
+    bool modify(iterator it, Callable&& func)
+    {
+        node_type* node = it.m_node;
+        if (!node) return false;
+        return m_parent.modify(node, std::forward<Callable>(func));
+    }
+
 };
 
 } // namespace tmi

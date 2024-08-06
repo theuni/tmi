@@ -659,6 +659,13 @@ public:
         return iterator(node);
     }
 
+    template <typename Callable>
+    bool modify(iterator it, Callable&& func)
+    {
+        node_type* node = it.m_node;
+        if (!node) return false;
+        return m_parent.modify(node, std::forward<Callable>(func));
+    }
 
 };
 

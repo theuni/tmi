@@ -224,7 +224,7 @@ private:
     }
 
     template <typename Callable>
-    bool do_modify(node_type* node, Callable&& func)
+    bool modify(node_type* node, Callable&& func)
     {
         struct hash_modify_actions {
             bool m_do_reinsert{false};
@@ -488,16 +488,6 @@ public:
         return iterator(ret);
     }
 
-
-    template <typename Callable>
-    bool modify(const_iterator it, Callable&& func)
-    {
-        node_type* node = const_cast<node_type*>(it.m_node);
-        if (!node) {
-            return false;
-        }
-        return do_modify(node, std::forward<Callable>(func));
-    }
 
     size_t size() const { return m_size; }
 
