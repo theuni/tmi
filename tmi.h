@@ -330,92 +330,6 @@ private:
 
 public:
 
-    class iterator
-    {
-        node_type* m_node{};
-
-    public:
-        friend class tmi;
-        friend class const_iterator;
-        typedef T value_type;
-        typedef T* pointer;
-        typedef T& reference;
-        using element_type = T;
-        iterator() = default;
-        template <int I>
-        iterator(sort_iterator<I> it) : m_node(it.m_node)
-        {
-        }
-        iterator(node_type* node) : m_node(node) {}
-        T& operator*() const { return m_node->value(); }
-        T* operator->() const { return &m_node->value(); }
-        iterator& operator++()
-        {
-            m_node = m_node->next();
-            return *this;
-        }
-        iterator& operator--()
-        {
-            m_node = m_node->prev();
-            return *this;
-        }
-        iterator operator++(int)
-        {
-            iterator copy(m_node);
-            ++(*this);
-            return copy;
-        }
-        iterator operator--(int)
-        {
-            iterator copy(m_node);
-            --(*this);
-            return copy;
-        }
-        bool operator==(iterator rhs) const { return m_node == rhs.m_node; }
-        bool operator!=(iterator rhs) const { return m_node != rhs.m_node; }
-    };
-
-    class const_iterator
-    {
-        const node_type* m_node{};
-
-    public:
-        friend class tmi;
-        typedef const T value_type;
-        typedef const T* pointer;
-        typedef const T& reference;
-        using element_type = const T;
-        const_iterator() = default;
-        const_iterator(iterator it) : m_node(it.m_node) {}
-        const_iterator(const node_type* node) : m_node(node) {}
-        const T& operator*() const { return m_node->value(); }
-        const T* operator->() const { return &m_node->value(); }
-        const_iterator& operator++()
-        {
-            m_node = m_node->next();
-            return *this;
-        }
-        const_iterator& operator--()
-        {
-            m_node = m_node->prev();
-            return *this;
-        }
-        const_iterator operator++(int)
-        {
-            const_iterator copy(m_node);
-            ++(*this);
-            return copy;
-        }
-        const_iterator operator--(int)
-        {
-            const_iterator copy(m_node);
-            --(*this);
-            return copy;
-        }
-        bool operator==(const_iterator rhs) const { return m_node == rhs.m_node; }
-        bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
-    };
-
     tmi(const allocator_type& alloc = {}) :  m_alloc(alloc)
     {
         foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
@@ -483,45 +397,8 @@ public:
 
     }
 
-    iterator erase(const_iterator it)
-    {
-        node_type* node = const_cast<node_type*>(it.m_node);
-        node_type* ret = node->next();
-        do_erase(node);
-        return iterator(ret);
-    }
-
-
     size_t size() const { return m_size; }
 
-    iterator begin() const { return iterator(m_begin); }
-
-    iterator end() const { return iterator(nullptr); }
-
-    template <typename H>
-    iterator find(const H::hash_type& hashable) const
-    {
-        return iterator(do_find<0, H>(hashable));
-    }
-
-    template <int I>
-    sort_iterator<I> sort_begin() const
-    {
-        return get_comparator_instance<I>().begin();
-    }
-
-    template <int I>
-    sort_iterator<I> sort_end() const
-    {
-        return get_comparator_instance<I>().end();
-    }
-
-    iterator iterator_to(const T& entry) const
-    {
-        T& ref = const_cast<T&>(entry);
-        node_type* node = reinterpret_cast<node_type*>(&ref);
-        return iterator(node);
-    }
     static constexpr size_t node_size()
     {
         return sizeof(node_type);
