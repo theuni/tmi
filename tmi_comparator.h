@@ -56,6 +56,46 @@ public:
         m_roots.template set_left<I>(node->get_base());
     }
 
+    static void set_right(base_type* lhs, base_type* rhs)
+    {
+        lhs->template set_right<I>(rhs);
+    }
+
+    static void set_left(base_type* lhs, base_type* rhs)
+    {
+        lhs->template set_left<I>(rhs);
+    }
+
+    static base_type* get_parent(base_type* base)
+    {
+        return base->template parent<I>();
+    }
+
+    static void set_parent(base_type* lhs, base_type* rhs)
+    {
+        lhs->template set_parent<I>(rhs);
+    }
+
+    static Color get_color(base_type* base)
+    {
+        return base->template color<I>();
+    }
+
+    static void set_color(base_type* base, Color color)
+    {
+        base->template set_color<I>(color);
+    }
+
+    static base_type* get_left(base_type* base)
+    {
+        return base->template left<I>();
+    }
+
+    static base_type* get_right(base_type* base)
+    {
+        return base->template right<I>();
+    }
+
     /*
 
     The below insert/erase impls were copied from libc++
