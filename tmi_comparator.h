@@ -644,6 +644,15 @@ public:
         return iterator(nullptr);
     }
 
+
+    iterator iterator_to(const T& entry) const
+    {
+        T& ref = const_cast<T&>(entry);
+        node_type* node = reinterpret_cast<node_type*>(&ref);
+        return iterator(node);
+    }
+
+
 };
 
 } // namespace tmi

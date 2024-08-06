@@ -357,6 +357,14 @@ public:
         return iterator(nullptr, m_buckets, 0);
     }
 
+    iterator iterator_to(const T& entry) const
+    {
+        T& ref = const_cast<T&>(entry);
+        node_type* node = reinterpret_cast<node_type*>(&ref);
+        size_t bucket = node->get_base()->template hash<I>() % m_buckets.size();
+        return iterator(node, &m_buckets, bucket);
+    }
+
 };
 
 } // namespace tmi
