@@ -365,6 +365,14 @@ public:
         return iterator(node, &m_buckets, bucket);
     }
 
+    template <typename... Args>
+    std::pair<iterator,bool> emplace(Args&&... args)
+    {
+        auto [node, success] = m_parent.emplace(std::forward<Args>(args)...);
+        size_t bucket = node->get_base()->template hash<I>() % m_buckets.size();
+        return std::make_pair(iterator(node, &m_buckets, bucket), success);
+    }
+
 };
 
 } // namespace tmi

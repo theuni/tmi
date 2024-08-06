@@ -444,7 +444,7 @@ public:
     }
 
     template <typename... Args>
-    std::pair<iterator, bool> emplace(Args&&... args)
+    std::pair<node_type*, bool> emplace(Args&&... args)
     {
         node_type* node = m_alloc.allocate(1);
         node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, std::forward<Args>(args)...);
@@ -452,9 +452,9 @@ public:
         if (conflict != nullptr) {
             std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
             std::allocator_traits<node_allocator_type>::deallocate(m_alloc, node, 1);
-            return std::make_pair(iterator(conflict), false);
+            return std::make_pair(conflict, false);
         }
-        return std::make_pair(iterator(node), true);
+        return std::make_pair(node, true);
     }
 
     void clear()

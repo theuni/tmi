@@ -631,6 +631,13 @@ public:
         bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
     };
 
+    template <typename... Args>
+    std::pair<iterator,bool> emplace(Args&&... args)
+    {
+        auto [node, success] = m_parent.emplace(std::forward<Args>(args)...);
+        return std::make_pair(iterator(node), success);
+    }
+
     iterator begin() const
     {
         base_type* root = get_root_base();
