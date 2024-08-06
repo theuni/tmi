@@ -310,6 +310,7 @@ public:
             }
             if (next == nullptr) {
                 m_node = nullptr;
+                m_bucket = 0;
             } else {
                 m_node = next->node();
             }
