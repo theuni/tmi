@@ -556,15 +556,14 @@ public:
     {
         node_type* m_node{};
 
+        iterator(node_type* node) : m_node(node) {}
     public:
-        //friend class iterator;
-        //friend class tmi;
+        friend tmi_comparator;
         typedef T value_type;
         typedef T* pointer;
         typedef T& reference;
         using element_type = T;
         iterator() = default;
-        iterator(node_type* node) : m_node(node) {}
         T& operator*() const { return m_node->value(); }
         T* operator->() const { return &m_node->value(); }
         iterator& operator++()
@@ -596,6 +595,7 @@ public:
     class const_iterator
     {
         const node_type* m_node{};
+        const_iterator(const node_type* node) : m_node(node) {}
 
     public:
         typedef const T value_type;
@@ -603,7 +603,6 @@ public:
         typedef const T& reference;
         using element_type = const T;
         const_iterator() = default;
-        const_iterator(const node_type* node) : m_node(node) {}
         const T& operator*() const { return m_node->value(); }
         const T* operator->() const { return &m_node->value(); }
         const_iterator& operator++()
