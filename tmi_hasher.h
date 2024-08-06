@@ -381,6 +381,46 @@ public:
         return m_parent.modify(node, std::forward<Callable>(func));
     }
 
+    iterator find(const hash_type& hash_key) const
+    {
+        size_t hash = m_hasher(hash_key);
+        size_t bucket_count = m_buckets.size();
+        if (!bucket_count) {
+            return iterator(nullptr, &m_buckets, 0);
+        }
+        size_t bucket = hash % bucket_count;
+        auto* node = m_buckets.at(bucket);
+        while (node) {
+            if (node->template hash<I>() == hash) {
+                if (m_hasher(node->node()->value(), hash_key)) {
+                    return iterator(node->node(), &m_buckets, bucket);
+                }
+            }
+            node = node->template next_hash<I>();
+        }
+        return iterator(nullptr, &m_buckets, 0);
+    }
+
+    iterator find(const T& value) const
+    {
+        size_t hash = m_hasher(value);
+        size_t bucket_count = m_buckets.size();
+        if (!bucket_count) {
+            return iterator(nullptr, &m_buckets, 0);
+        }
+        size_t bucket = hash % bucket_count;
+        auto* node = m_buckets.at(bucket);
+        while (node) {
+            if (node->template hash<I>() == hash) {
+                if (m_hasher(node->node()->value(), value)) {
+                    return iterator(node->node(), &m_buckets, bucket);
+                }
+            }
+            node = node->template next_hash<I>();
+        }
+        return iterator(nullptr, &m_buckets, 0);
+    }
+
 };
 
 } // namespace tmi

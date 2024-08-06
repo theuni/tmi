@@ -667,6 +667,23 @@ public:
         return m_parent.modify(node, std::forward<Callable>(func));
     }
 
+    iterator find(const T& value) const
+    {
+        base_type* parent = nullptr;
+        base_type* curr = get_root_base();
+        while (curr != nullptr) {
+            parent = curr;
+            if (m_comparator(value, curr->node()->value())) {
+                curr = curr->template left<I>();
+            } else if (m_comparator(curr->node()->value(), value)) {
+                curr = curr->template right<I>();
+            } else {
+                return iterator(curr->node());
+            }
+        }
+        return end();
+    }
+
 };
 
 } // namespace tmi
