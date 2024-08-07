@@ -5,11 +5,11 @@
 
 namespace tmi {
 
-template <typename T, int ComparatorSize, int NodeSize>
+template <typename T, int ComparatorSize, int HashSize>
 class tminode
 {
 public:
-    using base_type = tminode_base<T, ComparatorSize, NodeSize>;
+    using base_type = tminode_base<T, ComparatorSize, HashSize>;
     T m_value;
     base_type m_base{};
     tminode* m_prev{nullptr};

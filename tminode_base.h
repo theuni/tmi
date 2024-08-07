@@ -8,10 +8,10 @@
 
 namespace tmi {
 
-template <typename T, int ComparatorSize, int NodeSize>
+template <typename T, int ComparatorSize, int HashSize>
 class tminode;
 
-template <typename T, int ComparatorSize, int NodeSize>
+template <typename T, int ComparatorSize, int HashSize>
 struct tminode_base {
     struct rb {
         tminode_base* m_left{nullptr};
@@ -37,13 +37,13 @@ struct tminode_base {
        functions have been replaced.
 
     */
-    tminode<T, ComparatorSize, NodeSize>* m_node{nullptr};
+    tminode<T, ComparatorSize, HashSize>* m_node{nullptr};
 
     std::array<rb, ComparatorSize> m_tree_pointers{};
-    std::array<hash, NodeSize> m_hash_pointers{};
+    std::array<hash, HashSize> m_hash_pointers{};
 
 public:
-    friend class tminode<T, ComparatorSize, NodeSize>;
+    friend class tminode<T, ComparatorSize, HashSize>;
     enum Color : bool {
         RED = false,
         BLACK = true
@@ -112,7 +112,7 @@ public:
     }
 
 
-    tminode<T, ComparatorSize, NodeSize>* node() const
+    tminode<T, ComparatorSize, HashSize>* node() const
     {
         return m_node;
     }

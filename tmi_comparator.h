@@ -19,25 +19,25 @@
 
 namespace tmi {
 
-template <typename T, int ComparatorSize, int NodeSize>
+template <typename T, int ComparatorSize, int HashSize>
 struct comparator_insert_hints {
-    using node_type = tminode<T, ComparatorSize, NodeSize>;
+    using node_type = tminode<T, ComparatorSize, HashSize>;
     using base_type = node_type::base_type;
     base_type* m_parent{nullptr};
     bool m_inserted_left{false};
 };
 
 
-template <typename T, int ComparatorSize, int NodeSize>
+template <typename T, int ComparatorSize, int HashSize>
 struct tmi_comparator_base{};
 
 
-template <typename T, int ComparatorSize, int NodeSize, int I, typename Comparator, typename Parent>
-class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, NodeSize>
+template <typename T, int ComparatorSize, int HashSize, int I, typename Comparator, typename Parent>
+class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, HashSize>
 {
-    using node_type = tminode<T, ComparatorSize, NodeSize>;
+    using node_type = tminode<T, ComparatorSize, HashSize>;
     using base_type = node_type::base_type;
-    using insert_hints_type = comparator_insert_hints<T, ComparatorSize, NodeSize>;
+    using insert_hints_type = comparator_insert_hints<T, ComparatorSize, HashSize>;
     using Color = typename base_type::Color;
 
     friend Parent;
