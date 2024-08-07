@@ -559,6 +559,7 @@ public:
         iterator(node_type* node) : m_node(node) {}
     public:
         friend tmi_comparator;
+        friend Parent;
         typedef T value_type;
         typedef T* pointer;
         typedef T& reference;
@@ -692,6 +693,16 @@ public:
         iterator ret(node);
         m_parent.erase(node);
         return ret;
+    }
+
+private:
+
+    iterator make_iterator(node_type* node) const
+    {
+        if (node) {
+            return iterator(node);
+        }
+        return end();
     }
 
 };

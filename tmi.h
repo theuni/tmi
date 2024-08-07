@@ -319,29 +319,132 @@ private:
     }
 
     template <int I = 0, typename Index>
-    auto do_project(node_type* node) const
+    const auto& do_get_comparators() const
     {
-        if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
-            return sort_iterator<I>(node);
-        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
-            return hash_iterator<I>(node);
-        } else if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
-            return do_project<I + 1, Index>(node);
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
+            return get_comparator_instance<I>();
+        }
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>::tag>) {
+            return get_comparator_instance<I>();
+        }
+        else if constexpr (I + 1 < num_comparators) {
+            return do_get_comparators<I + 1, Index>();
         }
     }
 
     template <int I = 0, typename Index>
-    auto do_get() const
+    const auto& do_get_hashers() const
+    {
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+            return get_hasher_instance<I>();
+        }
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
+            return get_hasher_instance<I>();
+        }
+        else if constexpr (I + 1 < num_hashers) {
+            return do_get_hashers<I + 1, Index>();
+        }
+    }
+
+
+    template <int I = 0, typename Index>
+    const auto& do_get() const
+    {
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
+            return get_comparator_instance<I>();
+        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>::tag>) {
+            return get_comparator_instance<I>();
+        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+            return get_hasher_instance<I>();
+        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
+            return get_hasher_instance<I>();
+        } else if constexpr (I + 1 < num_comparators && I + 1 < num_hashers) {
+            return do_get<I + 1, Index>();
+        } else if constexpr (I + 1 < num_comparators) {
+            return do_get_comparators<I + 1, Index>();
+        } else if constexpr (I + 1 < num_hashers) {
+            return do_get_hashers<I + 1, Index>();
+        }
+    }
+
+
+    template <int I = 0, typename Index>
+    auto& do_get_comparators()
+    {
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
+            return get_comparator_instance<I>();
+        }
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>::tag>) {
+            return get_comparator_instance<I>();
+        }
+        else if constexpr (I + 1 < num_comparators) {
+            return do_get_comparators<I + 1, Index>();
+        }
+    }
+
+    template <int I = 0, typename Index>
+    auto& do_get_hashers()
+    {
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+            return get_hasher_instance<I>();
+        }
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
+            return get_hasher_instance<I>();
+        }
+        else if constexpr (I + 1 < num_hashers) {
+            return do_get_hashers<I + 1, Index>();
+        }
+    }
+
+
+    template <int I = 0, typename Index>
+    auto& do_get()
+    {
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
+            return get_comparator_instance<I>();
+        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>::tag>) {
+            return get_comparator_instance<I>();
+        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+            return get_hasher_instance<I>();
+        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
+            return get_hasher_instance<I>();
+        } else if constexpr (I + 1 < num_comparators && I + 1 < num_hashers) {
+            return do_get<I + 1, Index>();
+        } else if constexpr (I + 1 < num_comparators) {
+            return do_get_comparators<I + 1, Index>();
+        } else if constexpr (I + 1 < num_hashers) {
+            return do_get_hashers<I + 1, Index>();
+        }
+    }
+/*
+    template <int I = 0, typename Index>
+    auto& do_get()
     {
         if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
             return get_comparator_instance<I>();
         } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+            return get_hasher_instance<I>();
+        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
             return get_hasher_instance<I>();
         } else if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
             return do_get<I + 1, Index>();
         }
     }
 
+    template <int I = 0, typename Index>
+    const auto& do_get() const
+    {
+        if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
+            return get_comparator_instance<I>();
+        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
+            return get_hasher_instance<I>();
+        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
+            return get_hasher_instance<I>();
+        } else if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
+            return do_get<I + 1, Index>();
+        }
+    }
+*/
 public:
 
     tmi(const allocator_type& alloc = {}) :  m_alloc(alloc)
@@ -399,6 +502,8 @@ public:
 
     size_t size() const { return m_size; }
 
+    bool empty() const { return m_size == 0; }
+
     static constexpr size_t node_size()
     {
         return sizeof(node_type);
@@ -407,11 +512,17 @@ public:
     template <typename Index>
     auto project(auto it) const
     {
-        return do_project<0, Index>(it.m_node);
+        return do_get<0, Index>().make_iterator(it.m_node);
     }
 
     template <typename Index>
-    auto get() const
+    auto& get()
+    {
+        return do_get<0, Index>();
+    }
+
+    template <typename Index>
+    const auto& get() const
     {
         return do_get<0, Index>();
     }

@@ -251,7 +251,9 @@ public:
 
         iterator(node_type* node, const hash_buckets* buckets, size_t bucket) : m_node(node), m_buckets(buckets), m_bucket(bucket) {}
         friend class tmi_hasher;
+        friend Parent;
     public:
+
         typedef T value_type;
         typedef T* pointer;
         typedef T& reference;
@@ -300,6 +302,7 @@ public:
         typedef const T& reference;
         using element_type = const T;
         const_iterator() = default;
+        const_iterator(const iterator& rhs) : m_node(rhs.m_node), m_buckets(rhs.m_buckets), m_bucket(rhs.m_bucket) {}
         const T& operator*() const { return m_node->value(); }
         const T* operator->() const { return &m_node->value(); }
         const_iterator& operator++()
@@ -345,17 +348,17 @@ public:
                 return const_iterator(base->node(), &m_buckets, i);
             }
         }
-        return const_iterator(nullptr, m_buckets, 0);
+        return const_iterator(nullptr, &m_buckets, 0);
     }
 
     const_iterator end() const
     {
-        return const_iterator(nullptr, m_buckets, 0);
+        return const_iterator(nullptr, &m_buckets, 0);
     }
 
     iterator end()
     {
-        return iterator(nullptr, m_buckets, 0);
+        return iterator(nullptr, &m_buckets, 0);
     }
 
     iterator iterator_to(const T& entry) const
@@ -376,6 +379,14 @@ public:
 
     template <typename Callable>
     bool modify(iterator it, Callable&& func)
+    {
+        node_type* node = it.m_node;
+        if (!node) return false;
+        return m_parent.modify(node, std::forward<Callable>(func));
+    }
+
+    template <typename Callable>
+    bool modify(const_iterator it, Callable&& func)
     {
         node_type* node = it.m_node;
         if (!node) return false;
@@ -440,6 +451,78 @@ public:
         m_parent.erase(node);
         return ret;
     }
+
+    iterator erase(const_iterator it)
+    {
+        node_type* node = it.m_node;
+        if (!node) return iterator(nullptr, &m_buckets, 0);
+        size_t hash = node->get_base()->template hash<I>();
+        size_t bucket = hash % m_buckets.size();
+        base_type* next = get_next_hash(node->get_base());
+        if (!next) {
+            for (; bucket < m_buckets.size(); ++bucket) {
+                next = m_buckets.at(bucket);
+            }
+        }
+        if (!node) return iterator(nullptr, &m_buckets, 0);
+        iterator ret(next->node(), &m_buckets, bucket);
+
+        m_parent.erase(node);
+        return ret;
+    }
+
+    size_t count(const T& value) const
+    {
+        size_t ret = 0;
+        size_t hash = m_hasher(value);
+        size_t bucket_count = m_buckets.size();
+        if (!bucket_count) {
+            return 0;
+        }
+        size_t bucket = hash % bucket_count;
+        auto* node = m_buckets.at(bucket);
+        while (node) {
+            if (node->template hash<I>() == hash) {
+                if (m_hasher(node->node()->value(), value)) {
+                    ret++;
+                    if constexpr (Hasher::hashed_unique()) break;
+                }
+            }
+            node = node->template next_hash<I>();
+        }
+        return ret;
+    }
+
+    size_t count(const hash_type& hash_key) const
+    {
+        size_t ret = 0;
+        size_t hash = m_hasher(hash_key);
+        size_t bucket_count = m_buckets.size();
+        if (!bucket_count) {
+            return 0;
+        }
+        size_t bucket = hash % bucket_count;
+        auto* node = m_buckets.at(bucket);
+        while (node) {
+            if (node->template hash<I>() == hash) {
+                if (m_hasher(node->node()->value(), hash_key)) {
+                    ret++;
+                    if constexpr (Hasher::hashed_unique()) break;
+                }
+            }
+            node = node->template next_hash<I>();
+        }
+        return ret;
+    }
+private:
+
+    iterator make_iterator(node_type* node) const
+    {
+        size_t hash = node->get_base()->template hash<I>();
+        size_t bucket = hash % m_buckets.size();
+        return iterator(node, &m_buckets, bucket);
+    }
+
 };
 
 } // namespace tmi
