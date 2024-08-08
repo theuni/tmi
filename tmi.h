@@ -18,6 +18,17 @@
 
 namespace tmi {
 
+template<typename>
+struct index_type_counter;
+
+template<typename... Ts>
+struct index_type_counter<std::tuple<Ts...>>
+{
+  constexpr static size_t sort_count =  (0 + ... + (std::is_same_v<typename Ts::sorted, std::true_type>));
+  constexpr static size_t hash_count =  (0 + ... + (std::is_same_v<typename Ts::sorted, std::false_type>));
+};
+
+
 template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
 class tmi
 {
@@ -26,8 +37,8 @@ public:
     using allocator_type = Allocator;
     using comparator_types = Comparators::comparator_types;
     using hasher_types = Hashers::hasher_types;
-    static constexpr int num_comparators = std::tuple_size_v<comparator_types>;
-    static constexpr int num_hashers = std::tuple_size_v<hasher_types>;
+    static constexpr int num_comparators =  index_type_counter<comparator_types>::sort_count;
+    static constexpr int num_hashers = index_type_counter<hasher_types>::hash_count;
     using node_type = tminode<T, num_comparators, num_hashers>;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using base_type = node_type::base_type;
@@ -38,6 +49,17 @@ public:
 
     template <int I>
     using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>, parent_type>;
+
+
+    template <int I>
+    struct index_type_helper
+    {
+        using value = std::tuple_element_t<I, comparator_types>::sorted;
+        using comparator = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>, parent_type>;
+        using hasher = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>, parent_type>;
+        using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
+
+    };
 
     template <typename>
     struct index_helper;

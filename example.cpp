@@ -16,6 +16,8 @@ struct hash_nonunique;
 class compare_myclass_less
 {
 public:
+    using sorted = std::true_type;
+    static consteval bool sorted_type() { return true;}
     using tag = comp_less;
     constexpr static bool sorted_unique() { return false; }
     constexpr bool operator()(const myclass& a, const myclass& b) const noexcept
@@ -27,6 +29,8 @@ public:
 class compare_myclass_greater
 {
 public:
+    using sorted = std::true_type;
+    static consteval bool sorted_type() { return true;}
     using tag = comp_greater;
     constexpr static bool sorted_unique() { return true; }
     bool operator()(const myclass& a, const myclass& b) const
@@ -38,6 +42,8 @@ public:
 class hash_myclass_unique
 {
 public:
+    using sorted = std::false_type;
+    static consteval bool sorted_type() { return false;}
     using tag = hash_unique;
     using hash_type = int;
     constexpr static bool hashed_unique() { return true; }
@@ -62,6 +68,8 @@ public:
 class hash_myclass
 {
 public:
+    using sorted = std::false_type;
+    static consteval bool sorted_type() { return false;}
     using tag = hash_nonunique;
     using hash_type = int;
     constexpr static bool hashed_unique() { return false; }
