@@ -31,8 +31,6 @@ public:
     using node_type = tminode<T, num_comparators, num_hashers>;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using base_type = node_type::base_type;
-    using comparator_base = tmi_comparator_base<T, num_comparators, num_hashers>;
-    using hasher_base = tmi_hasher_base<T, num_comparators, num_hashers>;
     static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
 
     template <int I>
@@ -45,13 +43,25 @@ public:
     struct index_helper;
     template <size_t... ints>
     struct index_helper<std::index_sequence<ints...>> {
+        using hasher_types = std::tuple< tmi_hasher_type<ints> ...>;
         using hasher_hints = std::tuple< typename tmi_hasher_type<ints>::insert_hints ...>;
         using hasher_premodify_cache = std::tuple< typename tmi_hasher_type<ints>::premodify_cache ...>;
+        using comparator_types = std::tuple< tmi_comparator_type<ints> ...>;
         using comparator_hints = std::tuple< typename tmi_comparator_type<ints>::insert_hints ...>;
         using comparator_premodify_cache = std::tuple< typename tmi_comparator_type<ints>::premodify_cache ...>;
+
+        static hasher_types make_hasher_types(parent_type& parent) {
+            return std::make_tuple( tmi_hasher_type<ints>(parent) ...);
+        }
+        static comparator_types make_comparator_types(parent_type& parent) {
+            return std::make_tuple( tmi_comparator_type<ints>(parent) ...);
+        }
+
     };
+    using hashers_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_types;
     using hashers_hints_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_hints;
     using hashers_premodify_cache_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_premodify_cache;
+    using comparators_tuple = index_helper<std::make_index_sequence<num_hashers>>::comparator_types;
     using comparators_hints_tuple = index_helper<std::make_index_sequence<num_comparators>>::comparator_hints;
     using comparators_premodify_cache_tuple = index_helper<std::make_index_sequence<num_comparators>>::comparator_premodify_cache;
 
@@ -73,8 +83,8 @@ private:
     node_type* m_end{nullptr};
     size_t m_size{0};
 
-    std::array<comparator_base*, num_comparators> m_comparator_instances;
-    std::array<hasher_base*, num_hashers> m_hasher_instances;
+    comparators_tuple m_comparator_instances;
+    hashers_tuple m_hasher_instances;
 
     node_allocator_type m_alloc;
 
@@ -132,25 +142,25 @@ private:
     template <int I>
     const auto& get_hasher_instance() const
     {
-        return *static_cast<const tmi_hasher_type<I>*>(std::get<I>(m_hasher_instances));
+        return std::get<I>(m_hasher_instances);
     }
 
     template <int I>
     auto& get_hasher_instance()
     {
-        return *static_cast<tmi_hasher_type<I>*>(std::get<I>(m_hasher_instances));
+        return std::get<I>(m_hasher_instances);
     }
 
     template <int I>
     const auto& get_comparator_instance() const
     {
-        return *static_cast<const tmi_comparator_type<I>*>(std::get<I>(m_comparator_instances));
+        return std::get<I>(m_comparator_instances);
     }
 
     template <int I>
     auto& get_comparator_instance()
     {
-        return *static_cast<tmi_comparator_type<I>*>(std::get<I>(m_comparator_instances));
+        return std::get<I>(m_comparator_instances);
     }
 
 
@@ -464,36 +474,15 @@ private:
 */
 public:
 
-    tmi(const allocator_type& alloc = {}) :  m_alloc(alloc)
+    tmi(const allocator_type& alloc = {}) : m_comparator_instances(index_helper<std::make_index_sequence<num_comparators>>::make_comparator_types(*this)),
+                                            m_hasher_instances(index_helper<std::make_index_sequence<num_hashers>>::make_hasher_types(*this)),
+                                            m_alloc(alloc)
     {
-        foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
-            using hasher_instance_type = tmi_hasher_type<I>;
-            hasher = new hasher_instance_type(*this);
-         }, nullptr, m_hasher_instances);
-
-
-        foreach_comparator([this]<int I>(std::nullptr_t, comparator_base*& hasher) {
-            using comparator_instance_type = tmi_comparator_type<I>;
-            hasher = new comparator_instance_type(*this);
-         }, nullptr, m_comparator_instances);
     }
 
     ~tmi()
     {
         clear();
-
-        foreach_hasher([this]<int I>(std::nullptr_t, hasher_base*& hasher) {
-            using hasher_instance_type = tmi_hasher_type<I>;
-            hasher_instance_type* to_delete = static_cast<hasher_instance_type*>(hasher);
-            delete to_delete;
-         }, nullptr, m_hasher_instances);
-
-        foreach_comparator([this]<int I>(std::nullptr_t, comparator_base*& comparator) {
-            using comparator_instance_type = tmi_comparator_type<I>;
-            comparator_instance_type* to_delete = static_cast<comparator_instance_type*>(comparator);
-            delete to_delete;
-         }, nullptr, m_comparator_instances);
-
     }
 
     void clear()

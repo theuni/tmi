@@ -19,12 +19,8 @@
 
 namespace tmi {
 
-template <typename T, int ComparatorSize, int HashSize>
-struct tmi_comparator_base{};
-
-
 template <typename T, int ComparatorSize, int HashSize, int I, typename Comparator, typename Parent>
-class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, HashSize>
+class tmi_comparator
 {
     using node_type = tminode<T, ComparatorSize, HashSize>;
     using base_type = node_type::base_type;
