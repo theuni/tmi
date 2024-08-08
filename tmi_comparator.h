@@ -19,11 +19,11 @@
 
 namespace tmi {
 
-template <typename T, int ComparatorSize, int HashSize, int I, typename Comparator, typename Parent>
+template <typename T, typename Node, typename Comparator, typename Parent, int I>
 class tmi_comparator
 {
-    using node_type = tminode<T, ComparatorSize, HashSize>;
-    using base_type = node_type::base_type;
+    using node_type = Node;
+    using base_type = typename node_type::base_type;
     using Color = typename base_type::Color;
     friend Parent;
 
@@ -33,7 +33,7 @@ class tmi_comparator
     };
 
     struct premodify_cache{};
-    static consteval bool requires_premodify_cache() { return false; }
+    static constexpr bool requires_premodify_cache() { return false; }
 
     Parent& m_parent;
 
@@ -462,7 +462,12 @@ class tmi_comparator
 //===----------------------------------------------------------------------===//
 
 
-    node_type* preinsert_node_comparator(node_type* node, insert_hints& hints)
+    void remove_node(base_type* node)
+    {
+        tree_remove(node->get_base());
+    }
+
+    node_type* preinsert_node(node_type* node, insert_hints& hints)
     {
         base_type* parent = nullptr;
         base_type* curr = get_root_base();
@@ -496,7 +501,7 @@ class tmi_comparator
         return nullptr;
     }
 
-    void insert_node_comparator(node_type* node, const insert_hints& hints)
+    void insert_node(node_type* node, const insert_hints& hints)
     {
         base_type* base = node->get_base();
         base_type* parent = hints.m_parent;
@@ -513,7 +518,7 @@ class tmi_comparator
         tree_balance_after_insert(get_root_base(), base);
     }
 
-    bool comparator_erase_if_modified(node_type* node, const premodify_cache&)
+    bool erase_if_modified(node_type* node, const premodify_cache&)
     {
         base_type* base = node->get_base();
         base_type* next_ptr = nullptr;
@@ -538,7 +543,7 @@ class tmi_comparator
         return false;
     }
 
-    void clear()
+    void do_clear()
     {
         m_roots = {};
     }
@@ -628,7 +633,7 @@ public:
     template <typename... Args>
     std::pair<iterator,bool> emplace(Args&&... args)
     {
-        auto [node, success] = m_parent.emplace(std::forward<Args>(args)...);
+        auto [node, success] = m_parent.do_emplace(std::forward<Args>(args)...);
         return std::make_pair(iterator(node), success);
     }
 
@@ -658,7 +663,7 @@ public:
     {
         node_type* node = it.m_node;
         if (!node) return false;
-        return m_parent.modify(node, std::forward<Callable>(func));
+        return m_parent.do_modify(node, std::forward<Callable>(func));
     }
 
     iterator find(const T& value) const
@@ -684,8 +689,13 @@ public:
         if (!node) return iterator(nullptr);
         node = tree_next(node->get_base())->node();
         iterator ret(node);
-        m_parent.erase(node);
+        m_parent.do_erase(node);
         return ret;
+    }
+
+    void clear()
+    {
+        m_parent.do_clear();
     }
 
 private:

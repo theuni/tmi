@@ -5,13 +5,14 @@
 #include <cstdint>
 #include <limits>
 #include <cstdlib>
+#include <tuple>
 
 namespace tmi {
 
-template <typename T, int ComparatorSize, int HashSize>
+template <typename T, typename Indices>
 class tminode;
 
-template <typename T, int ComparatorSize, int HashSize>
+template <typename T, typename Indices>
 struct tminode_base {
     struct rb {
         tminode_base* m_left{nullptr};
@@ -37,13 +38,29 @@ struct tminode_base {
        functions have been replaced.
 
     */
-    tminode<T, ComparatorSize, HashSize>* m_node{nullptr};
+    tminode<T, Indices>* m_node{nullptr};
 
-    std::array<rb, ComparatorSize> m_tree_pointers{};
-    std::array<hash, HashSize> m_hash_pointers{};
+    using index_types = typename Indices::index_types;
+    template <int I>
+    struct base_index_type_helper
+    {
+        using value = typename std::tuple_element_t<I, index_types>::sorted;
+        using data_type = std::conditional_t<std::is_same_v<value, std::true_type>, rb, hash>;
+    };
+
+    template <typename>
+    struct base_index_helper;
+    template <size_t... ints>
+    struct base_index_helper<std::index_sequence<ints...>> {
+        using data_types = std::tuple<typename base_index_type_helper<ints>::data_type ...>;
+    };
+    static constexpr size_t num_indices = std::tuple_size<index_types>();
+    using data_types_tuple = typename base_index_helper<std::make_index_sequence<num_indices>>::data_types;
+
+    data_types_tuple m_data;
 
 public:
-    friend class tminode<T, ComparatorSize, HashSize>;
+    friend class tminode<T, Indices>;
     enum Color : bool {
         RED = false,
         BLACK = true
@@ -52,13 +69,13 @@ public:
     template <int I>
     void set_right(tminode_base* rhs)
     {
-        std::get<I>(m_tree_pointers).m_right = rhs;
+        std::get<I>(m_data).m_right = rhs;
     }
 
     template <int I>
     void set_left(tminode_base* rhs)
     {
-        std::get<I>(m_tree_pointers).m_left = rhs;
+        std::get<I>(m_data).m_left = rhs;
     }
 
 
@@ -71,7 +88,7 @@ public:
     tminode_base* parent() const
     {
         static constexpr uintptr_t mask = std::numeric_limits<uintptr_t>::max() - 1;
-        auto addr = reinterpret_cast<uintptr_t>(std::get<I>(m_tree_pointers).m_parent) & mask;
+        auto addr = reinterpret_cast<uintptr_t>(std::get<I>(m_data).m_parent) & mask;
         return reinterpret_cast<tminode_base*>(addr);
     }
 
@@ -79,40 +96,40 @@ public:
     void set_parent(tminode_base* rhs)
     {
         static constexpr uintptr_t mask = 1;
-        auto prev = reinterpret_cast<uintptr_t>(std::get<I>(m_tree_pointers).m_parent) & mask;
+        auto prev = reinterpret_cast<uintptr_t>(std::get<I>(m_data).m_parent) & mask;
         auto newaddr = reinterpret_cast<uintptr_t>(rhs) | prev;
-        std::get<I>(m_tree_pointers).m_parent = reinterpret_cast<tminode_base*>(newaddr);
+        std::get<I>(m_data).m_parent = reinterpret_cast<tminode_base*>(newaddr);
     }
 
     template <int I>
     Color color() const
     {
         static constexpr uintptr_t mask = 1;
-        return (reinterpret_cast<uintptr_t>(std::get<I>(m_tree_pointers).m_parent) & mask) == 0 ? Color::RED : Color::BLACK;
+        return (reinterpret_cast<uintptr_t>(std::get<I>(m_data).m_parent) & mask) == 0 ? Color::RED : Color::BLACK;
     }
 
     template <int I>
     void set_color(Color rhs)
     {
         static constexpr uintptr_t mask = std::numeric_limits<uintptr_t>::max() - 1;
-        auto addr = reinterpret_cast<uintptr_t>(std::get<I>(m_tree_pointers).m_parent) & mask;
-        std::get<I>(m_tree_pointers).m_parent = reinterpret_cast<tminode_base*>(addr | static_cast<uintptr_t>(rhs));
+        auto addr = reinterpret_cast<uintptr_t>(std::get<I>(m_data).m_parent) & mask;
+        std::get<I>(m_data).m_parent = reinterpret_cast<tminode_base*>(addr | static_cast<uintptr_t>(rhs));
     }
 
     template <int I>
     tminode_base* left() const
     {
-        return std::get<I>(m_tree_pointers).m_left;
+        return std::get<I>(m_data).m_left;
     }
 
     template <int I>
     tminode_base* right() const
     {
-        return std::get<I>(m_tree_pointers).m_right;
+        return std::get<I>(m_data).m_right;
     }
 
 
-    tminode<T, ComparatorSize, HashSize>* node() const
+    tminode<T, Indices>* node() const
     {
         return m_node;
     }
@@ -120,25 +137,25 @@ public:
     template <int I>
     tminode_base* next_hash() const
     {
-        return std::get<I>(m_hash_pointers).m_nexthash;
+        return std::get<I>(m_data).m_nexthash;
     }
 
     template <int I>
     size_t hash()
     {
-        return std::get<I>(m_hash_pointers).m_hash;
+        return std::get<I>(m_data).m_hash;
     }
 
     template <int I>
     void set_hash(size_t hash)
     {
-        std::get<I>(m_hash_pointers).m_hash = hash;
+        std::get<I>(m_data).m_hash = hash;
     }
 
     template <int I>
     void set_next_hashptr(tminode_base* rhs)
     {
-        std::get<I>(m_hash_pointers).m_nexthash = rhs;
+        std::get<I>(m_data).m_nexthash = rhs;
     }
 };
 

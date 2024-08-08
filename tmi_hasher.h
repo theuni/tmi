@@ -16,13 +16,13 @@
 
 namespace tmi {
 
-template <typename T, int ComparatorSize, int HashSize, int I, typename Hasher, typename Parent>
+template <typename T, typename Node, typename Hasher, typename Parent, int I>
 class tmi_hasher
 {
-    using node_type = tminode<T, ComparatorSize, HashSize>;
-    using base_type = node_type::base_type;
+    using node_type = Node;
+    using base_type = typename node_type::base_type;
     using hash_buckets = std::vector<base_type*>;
-    using hash_type = Hasher::hash_type;
+    using hash_type = typename Hasher::hash_type;
     friend Parent;
 
     struct insert_hints {
@@ -36,7 +36,7 @@ class tmi_hasher
         base_type* m_prev{nullptr};
     };
 
-    static consteval bool requires_premodify_cache() { return true; }
+    static constexpr bool requires_premodify_cache() { return true; }
 
     static constexpr size_t first_hashes_resize = 2048;
 
@@ -89,9 +89,10 @@ class tmi_hasher
         m_buckets = std::move(new_buckets);
     }
 
-    void hash_remove_direct(base_type* node)
+    void remove_node(node_type* node)
     {
-        auto hash = node->template hash<I>();
+        base_type* base = node->get_base();
+        auto hash = base->template hash<I>();
         size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
             return;
@@ -102,7 +103,7 @@ class tmi_hasher
         base_type* cur_node = bucket;
         base_type* prev_node = cur_node;
         while (cur_node) {
-            if (cur_node->template hash<I>() == hash && m_hasher(cur_node->node()->value(), node->node()->value())) {
+            if (cur_node->template hash<I>() == hash && m_hasher(cur_node->node()->value(), node->value())) {
                 if (cur_node == prev_node) {
                     // head of list
                     bucket = cur_node->template next_hash<I>();
@@ -121,7 +122,7 @@ class tmi_hasher
         First rehash if necessary, using first_hashes_resize as the initial
         size if empty. Then find calculate the bucket and insert there.
     */
-    node_type* preinsert_node_hash(node_type* node, insert_hints& hints)
+    node_type* preinsert_node(node_type* node, insert_hints& hints)
     {
         size_t bucket_count = m_buckets.size();
         auto hash = m_hasher(node->value());
@@ -153,7 +154,7 @@ class tmi_hasher
         return nullptr;
     }
 
-    void hasher_create_premodify_cache(node_type* node, premodify_cache& cache)
+    void create_premodify_cache(node_type* node, premodify_cache& cache)
     {
         base_type* base = node->get_base();
         auto hash = base->template hash<I>();
@@ -182,7 +183,7 @@ class tmi_hasher
         }
     }
 
-    bool hasher_erase_if_modified(node_type* node, const premodify_cache& cache)
+    bool erase_if_modified(node_type* node, const premodify_cache& cache)
     {
         base_type* base = node->get_base();
         if (m_hasher(node->value()) != base->template hash<I>()) {
@@ -197,7 +198,7 @@ class tmi_hasher
         return false;
     }
 
-    void insert_node_hash(node_type* node, const insert_hints& hints)
+    void insert_node(node_type* node, const insert_hints& hints)
     {
         base_type* node_base = node->get_base();
         node_base->template set_hash<I>(hints.m_hash);
@@ -226,10 +227,12 @@ class tmi_hasher
         return nullptr;
     }
 
-    void clear()
+    void do_clear()
     {
         m_buckets.clear();
+        m_size = 0;
     }
+
 public:
 
     class iterator
@@ -363,7 +366,7 @@ public:
     template <typename... Args>
     std::pair<iterator,bool> emplace(Args&&... args)
     {
-        auto [node, success] = m_parent.emplace(std::forward<Args>(args)...);
+        auto [node, success] = m_parent.do_emplace(std::forward<Args>(args)...);
         return std::make_pair(iterator(node, &m_buckets), success);
     }
 
@@ -372,7 +375,7 @@ public:
     {
         node_type* node = it.m_node;
         if (!node) return false;
-        return m_parent.modify(node, std::forward<Callable>(func));
+        return m_parent.do_modify(node, std::forward<Callable>(func));
     }
 
     template <typename Callable>
@@ -380,7 +383,7 @@ public:
     {
         node_type* node = it.m_node;
         if (!node) return false;
-        return m_parent.modify(node, std::forward<Callable>(func));
+        return m_parent.do_modify(node, std::forward<Callable>(func));
     }
 
     iterator find(const hash_type& hash_key) const
@@ -435,7 +438,7 @@ public:
                 if (next != nullptr) break;
             }
         }
-        m_parent.erase(node);
+        m_parent.do_erase(node);
         return iterator(next->node, &m_buckets);
     }
 
@@ -451,7 +454,7 @@ public:
                 if (next != nullptr) break;
             }
         }
-        m_parent.erase(node);
+        m_parent.do_erase(node);
         return iterator(next->node, &m_buckets);
     }
 
@@ -498,13 +501,27 @@ public:
         }
         return ret;
     }
+
+    void clear()
+    {
+        m_parent.do_clear();
+    }
+
+    size_t size() const
+    {
+        return m_size;
+    }
+
+    bool empty() const
+    {
+        return m_size == 0;
+    }
+
 private:
 
     iterator make_iterator(node_type* node) const
     {
-        size_t hash = node->get_base()->template hash<I>();
-        size_t bucket = hash % m_buckets.size();
-        return iterator(node, &m_buckets, bucket);
+        return iterator(node, &m_buckets);
     }
 
 };

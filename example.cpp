@@ -1,9 +1,9 @@
 #include "tmi.h"
 
 struct myclass {
-    int val{0};
+    size_t val{0};
     myclass() = default;
-    myclass(int rhs) : val(rhs) {}
+    myclass(size_t rhs) : val(rhs) {}
     bool operator()(const myclass&) const { return true; }
     bool operator==(const myclass&) const = default;
 };
@@ -17,7 +17,7 @@ class compare_myclass_less
 {
 public:
     using sorted = std::true_type;
-    static consteval bool sorted_type() { return true;}
+    static constexpr bool sorted_type() { return true;}
     using tag = comp_less;
     constexpr static bool sorted_unique() { return false; }
     constexpr bool operator()(const myclass& a, const myclass& b) const noexcept
@@ -30,7 +30,7 @@ class compare_myclass_greater
 {
 public:
     using sorted = std::true_type;
-    static consteval bool sorted_type() { return true;}
+    static constexpr bool sorted_type() { return true;}
     using tag = comp_greater;
     constexpr static bool sorted_unique() { return true; }
     bool operator()(const myclass& a, const myclass& b) const
@@ -43,9 +43,9 @@ class hash_myclass_unique
 {
 public:
     using sorted = std::false_type;
-    static consteval bool sorted_type() { return false;}
+    static constexpr bool sorted_type() { return false;}
     using tag = hash_unique;
-    using hash_type = int;
+    using hash_type = size_t;
     constexpr static bool hashed_unique() { return true; }
     bool operator()(const myclass& a, const myclass& b) const
     {
@@ -69,9 +69,9 @@ class hash_myclass
 {
 public:
     using sorted = std::false_type;
-    static consteval bool sorted_type() { return false;}
+    static constexpr bool sorted_type() { return false;}
     using tag = hash_nonunique;
-    using hash_type = int;
+    using hash_type = size_t;
     constexpr static bool hashed_unique() { return false; }
     bool operator()(const myclass& a, const myclass& b) const
     {
@@ -91,27 +91,21 @@ public:
     }
 };
 
-template <typename T, typename... Comparators>
-struct comparators_helper {
+template <typename T, typename... Indices>
+struct index_helper {
     using value_type = T;
-    using comparator_types = std::tuple<Comparators...>;
-};
-
-template <typename T, typename... Hashers>
-struct hashers_helper {
-    using value_type = T;
-    using hasher_types = std::tuple<Hashers...>;
+    using index_types = std::tuple<Indices...>;
 };
 
 
-using comparators = comparators_helper<myclass, compare_myclass_less, compare_myclass_greater>;
-using hashers = hashers_helper<myclass, hash_myclass, hash_myclass_unique>;
+using indices = index_helper<myclass, hash_myclass, hash_myclass_unique, compare_myclass_less, compare_myclass_greater>;
 
 int main()
 {
-    tmi::tmi<myclass, comparators, hashers, std::allocator<myclass>> bar;
+    tmi::tmi<myclass, indices, std::allocator<myclass>> bar;
     auto& hash_index = bar.get<hash_nonunique>();
-    for (int i = 0; i <= 10; i++) {
+    bar.emplace(0UL);
+    for (unsigned i = 1; i <= 10; i++) {
         hash_index.emplace(i);
     }
     auto it = hash_index.find(0);

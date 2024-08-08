@@ -5,11 +5,11 @@
 
 namespace tmi {
 
-template <typename T, int ComparatorSize, int HashSize>
+template <typename T, typename Indices>
 class tminode
 {
 public:
-    using base_type = tminode_base<T, ComparatorSize, HashSize>;
+    using base_type = tminode_base<T, Indices>;
     T m_value;
     base_type m_base{};
     tminode* m_prev{nullptr};

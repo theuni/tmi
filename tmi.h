@@ -18,86 +18,104 @@
 
 namespace tmi {
 
-template<typename>
-struct index_type_counter;
+namespace detail {
 
-template<typename... Ts>
-struct index_type_counter<std::tuple<Ts...>>
+/*
+    Helper to find the first index which tmi should inherit from
+*/
+template <typename T, typename Indices, typename Allocator, typename Parent>
+struct first_index_type_helper
 {
-  constexpr static size_t sort_count =  (0 + ... + (std::is_same_v<typename Ts::sorted, std::true_type>));
-  constexpr static size_t hash_count =  (0 + ... + (std::is_same_v<typename Ts::sorted, std::false_type>));
+    using index_types = typename Indices::index_types;
+    using node_type = tminode<T, Indices>;
+    using value = typename std::tuple_element_t<0, index_types>::sorted;
+    using comparator = tmi_comparator<T, node_type, std::tuple_element_t<0, index_types>, Parent, 0>;
+    using hasher = tmi_hasher<T, node_type, std::tuple_element_t<0, index_types>, Parent, 0>;
+    using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
 };
 
+/* These null helpers allow for a dummy instance to be created as the first
+   tuple member. Later, get_instance will refer back to *this rather than
+   the dummy.
+*/
 
-template <typename T, typename Comparators, typename Hashers, typename Allocator = std::allocator<T>>
-class tmi
+template <typename T, typename Indices, typename Allocator, typename Parent, int I>
+struct maybe_null_index_type_helper
+{
+    using index_types = typename Indices::index_types;
+    using node_type = tminode<T, Indices>;
+    using value = typename std::tuple_element_t<I, index_types>::sorted;
+    using comparator = tmi_comparator<T, node_type, std::tuple_element_t<I, index_types>, Parent, I>;
+    using hasher = tmi_hasher<T, node_type, std::tuple_element_t<I, index_types>, Parent, I>;
+    using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
+    struct null_instance{
+        null_instance(Parent& parent) : m_parent(parent){}
+        Parent& m_parent;
+    };
+};
+
+template <typename T, typename Indices, typename Allocator, typename Parent>
+struct maybe_null_index_type_helper<T, Indices, Allocator, Parent, 0>
+{
+    struct null_instance{
+        null_instance(Parent& parent) : m_parent(parent){}
+        Parent& m_parent;
+    };
+    using type = null_instance;
+};
+
+}
+
+template <typename T, typename Indices, typename Allocator = std::allocator<T>>
+class tmi : public detail::first_index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>>::type
 {
 public:
-    using parent_type = tmi<T, Comparators, Hashers, Allocator>;
+    using parent_type = tmi<T, Indices, Allocator>;
     using allocator_type = Allocator;
-    using comparator_types = Comparators::comparator_types;
-    using hasher_types = Hashers::hasher_types;
-    static constexpr int num_comparators =  index_type_counter<comparator_types>::sort_count;
-    static constexpr int num_hashers = index_type_counter<hasher_types>::hash_count;
-    using node_type = tminode<T, num_comparators, num_hashers>;
+    using index_types = typename Indices::index_types;
+    using node_type = tminode<T, Indices>;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
-    using base_type = node_type::base_type;
-    static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
-
-    template <int I>
-    using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>, parent_type>;
-
-    template <int I>
-    using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>, parent_type>;
-
+    using base_type = typename node_type::base_type;
+    using inherited_index = typename detail::first_index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>>::type;
 
     template <int I>
     struct index_type_helper
     {
-        using value = std::tuple_element_t<I, comparator_types>::sorted;
-        using comparator = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>, parent_type>;
-        using hasher = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>, parent_type>;
+        using value = typename std::tuple_element_t<I, index_types>::sorted;
+        using comparator = tmi_comparator<T, node_type, std::tuple_element_t<I, index_types>, parent_type, I>;
+        using hasher = tmi_hasher<T, node_type, std::tuple_element_t<I, index_types>, parent_type, I>;
         using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
-
     };
+
+    template <int I>
+    using maybe_null_tmi_index_type = typename detail::maybe_null_index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, I>::type; 
+
+    template <int I>
+    using tmi_index_type = typename index_type_helper<I>::type;
 
     template <typename>
     struct index_helper;
     template <size_t... ints>
     struct index_helper<std::index_sequence<ints...>> {
-        using hasher_types = std::tuple< tmi_hasher_type<ints> ...>;
-        using hasher_hints = std::tuple< typename tmi_hasher_type<ints>::insert_hints ...>;
-        using hasher_premodify_cache = std::tuple< typename tmi_hasher_type<ints>::premodify_cache ...>;
-        using comparator_types = std::tuple< tmi_comparator_type<ints> ...>;
-        using comparator_hints = std::tuple< typename tmi_comparator_type<ints>::insert_hints ...>;
-        using comparator_premodify_cache = std::tuple< typename tmi_comparator_type<ints>::premodify_cache ...>;
+        using index_types = std::tuple<maybe_null_tmi_index_type<ints> ...>;
+        using hints_types =  std::tuple<typename tmi_index_type<ints>::insert_hints ...>;
+        using premodify_cache_types = std::tuple<typename tmi_index_type<ints>::premodify_cache ...>;
 
-        static hasher_types make_hasher_types(parent_type& parent) {
-            return std::make_tuple( tmi_hasher_type<ints>(parent) ...);
+        static index_types make_index_types(parent_type& parent) {
+            return std::make_tuple( maybe_null_tmi_index_type<ints>(parent) ...);
         }
-        static comparator_types make_comparator_types(parent_type& parent) {
-            return std::make_tuple( tmi_comparator_type<ints>(parent) ...);
-        }
-
     };
-    using hashers_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_types;
-    using hashers_hints_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_hints;
-    using hashers_premodify_cache_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_premodify_cache;
-    using comparators_tuple = index_helper<std::make_index_sequence<num_hashers>>::comparator_types;
-    using comparators_hints_tuple = index_helper<std::make_index_sequence<num_comparators>>::comparator_hints;
-    using comparators_premodify_cache_tuple = index_helper<std::make_index_sequence<num_comparators>>::comparator_premodify_cache;
+
+    static constexpr size_t num_indices = std::tuple_size<index_types>();
+    using indices_tuple = typename index_helper<std::make_index_sequence<num_indices>>::index_types;
+    using indices_hints_tuple = typename index_helper<std::make_index_sequence<num_indices>>::hints_types;
+    using indices_premodify_cache_tuple = typename index_helper<std::make_index_sequence<num_indices>>::premodify_cache_types;
 
 
-    template <int I>
-    using sort_iterator = tmi_comparator_type<I>::iterator;
-
-    template <int I>
-    using hash_iterator = tmi_hasher_type<I>::iterator;
-
-    template <typename, int, int, int, typename, typename>
+    template <typename, typename, typename, typename, int>
     friend class tmi_hasher;
 
-    template <typename, int, int, int, typename, typename>
+    template <typename, typename, typename, typename, int>
     friend class tmi_comparator;
 
 private:
@@ -105,130 +123,73 @@ private:
     node_type* m_end{nullptr};
     size_t m_size{0};
 
-    comparators_tuple m_comparator_instances;
-    hashers_tuple m_hasher_instances;
+
+    indices_tuple m_index_instances;
 
     node_allocator_type m_alloc;
 
 
     template <int I = 0, class Callable, typename Node, typename... Args>
-    static void foreach_hasher(Callable&& func, Node node, Args&&... args)
+    static void foreach_index(Callable&& func, Node node, Args&&... args)
     {
-        if constexpr (num_hashers) {
+        if constexpr (num_indices) {
             func.template operator()<I>(node, std::get<I>(args)...);
         }
-        if constexpr (I + 1 < num_hashers) {
-            foreach_hasher<I + 1>(std::forward<Callable>(func), node, std::forward<Args>(args)...);
+        if constexpr (I + 1 < num_indices) {
+            foreach_index<I + 1>(std::forward<Callable>(func), node, std::forward<Args>(args)...);
         }
     }
 
     template <int I = 0, class Callable, typename Node, typename... Args>
-    static bool get_foreach_hasher(Callable&& func, Node node, Args&&... args)
+    static bool get_foreach_index(Callable&& func, Node node, Args&&... args)
     {
-        if constexpr (num_hashers) {
+        if constexpr (num_indices) {
             if (!func.template operator()<I>(node, std::get<I>(args)...)) {
                 return false;
             }
         }
-        if constexpr (I + 1 < num_hashers) {
-            return get_foreach_hasher<I + 1>(std::forward<Callable>(func), node, std::forward<Args>(args)...);
-        }
-        return true;
-    }
-
-    template <int I = 0, class Callable, typename Node, typename... Args>
-    static void foreach_comparator(Callable&& func, Node node, Args&&... args)
-    {
-        if constexpr (num_comparators) {
-            func.template operator()<I>(node, std::get<I>(args)...);
-        }
-        if constexpr (I + 1 < num_comparators) {
-            foreach_comparator<I + 1>(std::forward<Callable>(func), node, std::forward<Args>(args)...);
-        }
-    }
-
-    template <int I = 0, class Callable, typename Node, typename... Args>
-    static bool get_foreach_comparator(Callable&& func, Node node, Args&&... args)
-    {
-        if constexpr (num_comparators) {
-            if (!func.template operator()<I>(node, std::get<I>(args)...)) {
-                return false;
-            }
-        }
-        if constexpr (I + 1 < num_comparators) {
-            return get_foreach_comparator<I + 1>(std::forward<Callable>(func), node, std::forward<Args>(args)...);
+        if constexpr (I + 1 < num_indices) {
+            return get_foreach_index<I + 1>(std::forward<Callable>(func), node, std::forward<Args>(args)...);
         }
         return true;
     }
 
     template <int I>
-    const auto& get_hasher_instance() const
+    const auto& get_index_instance() const
     {
-        return std::get<I>(m_hasher_instances);
-    }
-
-    template <int I>
-    auto& get_hasher_instance()
-    {
-        return std::get<I>(m_hasher_instances);
-    }
-
-    template <int I>
-    const auto& get_comparator_instance() const
-    {
-        return std::get<I>(m_comparator_instances);
-    }
-
-    template <int I>
-    auto& get_comparator_instance()
-    {
-        return std::get<I>(m_comparator_instances);
-    }
-
-
-    template <int I, typename H>
-    node_type* do_find(const H::hash_type& hash_key) const
-    {
-        if constexpr (std::is_same_v<H, typename std::tuple_element_t<I, hasher_types>>) {
-            return get_hasher_instance<I>().find_hash(hash_key);
-        } else if constexpr (I + 1 < num_hashers) {
-            return do_find<I + 1, H>(hash_key);
+        if constexpr(I == 0) {
+            return(*static_cast<const inherited_index*>(this));
         } else {
-            // g++ isn't able to cope with this static_assert for some reason.
-            // This should be unreachable code.
-            //static_assert(false, "Invalid hasher");
-            return nullptr;
+            return std::get<I>(m_index_instances);
+        }
+    }
+
+    template <int I>
+    auto& get_index_instance()
+    {
+        if constexpr(I == 0) {
+            return(*static_cast<inherited_index*>(this));
+        } else {
+            return std::get<I>(m_index_instances);
         }
     }
 
     node_type* do_insert(node_type* node)
     {
-        comparators_hints_tuple comp_hints;
-        hashers_hints_tuple hash_hints;
+        indices_hints_tuple hints;
 
         bool can_insert;
         node_type* conflict = nullptr;
-        can_insert = get_foreach_hasher([this, &conflict]<int I>(node_type* node, auto& hints) {
-            conflict = get_hasher_instance<I>().preinsert_node_hash(node, hints);
+        can_insert = get_foreach_index([this, &conflict]<int I>(node_type* node, auto& hints) {
+            conflict = get_index_instance<I>().preinsert_node(node, hints);
             return conflict == nullptr;
-        }, node, hash_hints);
+        }, node, hints);
 
         if (!can_insert) return conflict;
 
-        can_insert = get_foreach_comparator([this, &conflict]<int I>(node_type* node, auto& hints) {
-            conflict = get_comparator_instance<I>().preinsert_node_comparator(node, hints);
-            return conflict == nullptr;
-        }, node, comp_hints);
-
-        if (!can_insert) return conflict;
-
-        foreach_hasher([this]<int I>(node_type* node, auto& hints) {
-            get_hasher_instance<I>().insert_node_hash(node, hints);
-        }, node, hash_hints);
-
-        foreach_comparator([this]<int I>(node_type* node, auto& hints) {
-            get_comparator_instance<I>().insert_node_comparator(node, hints);
-        }, node, comp_hints);
+        foreach_index([this]<int I>(node_type* node, auto& hints) {
+            get_index_instance<I>().insert_node(node, hints);
+        }, node, hints);
 
         if (m_begin == nullptr) {
             assert(m_end == nullptr);
@@ -256,7 +217,7 @@ private:
     }
 
     template <typename... Args>
-    std::pair<node_type*, bool> emplace(Args&&... args)
+    std::pair<node_type*, bool> do_emplace(Args&&... args)
     {
         node_type* node = m_alloc.allocate(1);
         node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, std::forward<Args>(args)...);
@@ -269,246 +230,90 @@ private:
         return std::make_pair(node, true);
     }
 
-    void erase(node_type* node)
+    void do_erase(node_type* node)
     {
-        foreach_comparator([this]<int I>(node_type* node) {
-            get_comparator_instance<I>().tree_remove(node->get_base());
-        }, node);
-
-        foreach_hasher([this]<int I>(node_type* node) {
-            get_hasher_instance<I>().hash_remove_direct(node->get_base());
+        foreach_index([this]<int I>(node_type* node) {
+            get_index_instance<I>().remove_node(node);
         }, node);
         do_erase_cleanup(node);
     }
 
     template <typename Callable>
-    bool modify(node_type* node, Callable&& func)
+    bool do_modify(node_type* node, Callable&& func)
     {
-        struct hash_modify_actions {
+        struct modify_actions {
             bool m_do_reinsert{false};
         };
-        struct comparator_modify_actions {
-            bool m_do_reinsert{false};
-        };
+        using index_modify_actions_array = std::array<modify_actions, num_indices>;
 
-        using hasher_modify_actions_array = std::array<hash_modify_actions, num_hashers>;
-        using comparator_modify_actions_array = std::array<comparator_modify_actions, num_comparators>;
+        indices_premodify_cache_tuple index_cache;
 
-
-        // Create a cache of the pre-modified hash buckets
-        hashers_premodify_cache_tuple hash_cache;
-        foreach_hasher([this]<int I>(node_type* node, auto& cache) {
-            if constexpr (tmi_hasher_type<I>::requires_premodify_cache()) {
-                get_hasher_instance<I>().hasher_create_premodify_cache(node, cache);
+        foreach_index([this]<int I>(node_type* node, auto& cache) {
+            if constexpr (tmi_index_type<I>::requires_premodify_cache()) {
+                get_index_instance<I>().create_premodify_cache(node, cache);
             }
-        }, node, hash_cache);
-
-        comparators_premodify_cache_tuple comp_cache;
-        foreach_comparator([this]<int I>(node_type* node, auto& cache) {
-            if constexpr (tmi_comparator_type<I>::requires_premodify_cache()) {
-                get_comparator_instance<I>().comparator_create_premodify_cache(node, cache);
-            }
-        }, node, comp_cache);
+        }, node, index_cache);
 
 
         func(node->value());
 
-        hasher_modify_actions_array hash_modify;
-        comparator_modify_actions_array comp_modify;
+        index_modify_actions_array index_modify;
 
-        // Erase modified hashes
-        foreach_hasher([this]<int I>(node_type* node, auto& modify, const auto& cache) {
-            modify.m_do_reinsert = get_hasher_instance<I>().hasher_erase_if_modified(node, cache);
-         }, node, hash_modify, hash_cache);
+        foreach_index([this]<int I>(node_type* node, auto& modify, const auto& cache) {
+            modify.m_do_reinsert = get_index_instance<I>().erase_if_modified(node, cache);
+         }, node, index_modify, index_cache);
 
 
-        // Erase modified sorts
-        foreach_comparator([this]<int I>(node_type* node, auto& modify, const auto& cache) {
-            modify.m_do_reinsert = get_comparator_instance<I>().comparator_erase_if_modified(node, cache);
-        }, node, comp_modify, comp_cache);
+        indices_hints_tuple index_hints;
 
-        // At this point the node has been removed from all buckets and trees.
-        // Test to see if it's reinsertable everywhere or delete it.
-
-        comparators_hints_tuple comp_hints;
-        hashers_hints_tuple hash_hints;
-
-        // Check to see if any new hashes can be safely inserted
-        bool insertable = get_foreach_hasher([this]<int I>(node_type* node, const auto& modify, auto& hints) {
-            if (modify.m_do_reinsert) return get_hasher_instance<I>().preinsert_node_hash(node, hints) == nullptr;
+        bool insertable = get_foreach_index([this]<int I>(node_type* node, const auto& modify, auto& hints) {
+            if (modify.m_do_reinsert) return get_index_instance<I>().preinsert_node(node, hints) == nullptr;
             return true;
-        }, node, hash_modify, hash_hints);
-
-        // Check to see if any new sorts can be safely inserted
-        if (insertable) {
-            insertable = get_foreach_comparator([this]<int I>(node_type* node, const auto& modify, auto& hints) {
-                if (modify.m_do_reinsert) return get_comparator_instance<I>().preinsert_node_comparator(node, hints) == nullptr;
-                return true;
-            }, node, comp_modify, comp_hints);
-        }
+        }, node, index_modify, index_hints);
 
         if (!insertable) {
             do_erase_cleanup(node);
             return false;
         }
 
-        foreach_hasher([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
-            if (modify.m_do_reinsert) get_hasher_instance<I>().insert_node_hash(node, hints);
+        foreach_index([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
+            if (modify.m_do_reinsert) get_index_instance<I>().insert_node(node, hints);
             return true;
-        },
-                       node, hash_modify, hash_hints);
-
-        foreach_comparator([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
-            if (modify.m_do_reinsert) get_comparator_instance<I>().insert_node_comparator(node, hints);
-            return true;
-        },
-                           node, comp_modify, comp_hints);
+        }, node, index_modify, index_hints);
 
         return true;
     }
 
     template <int I = 0, typename Index>
-    const auto& do_get_comparators() const
-    {
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
-            return get_comparator_instance<I>();
-        }
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>::tag>) {
-            return get_comparator_instance<I>();
-        }
-        else if constexpr (I + 1 < num_comparators) {
-            return do_get_comparators<I + 1, Index>();
-        }
-    }
-
-    template <int I = 0, typename Index>
-    const auto& do_get_hashers() const
-    {
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
-            return get_hasher_instance<I>();
-        }
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
-            return get_hasher_instance<I>();
-        }
-        else if constexpr (I + 1 < num_hashers) {
-            return do_get_hashers<I + 1, Index>();
-        }
-    }
-
-
-    template <int I = 0, typename Index>
     const auto& do_get() const
     {
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
-            return get_comparator_instance<I>();
-        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>::tag>) {
-            return get_comparator_instance<I>();
-        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
-            return get_hasher_instance<I>();
-        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
-            return get_hasher_instance<I>();
-        } else if constexpr (I + 1 < num_comparators && I + 1 < num_hashers) {
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, index_types>>) {
+            return get_index_instance<I>();
+        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, index_types>::tag>) {
+            return get_index_instance<I>();
+        } else if constexpr (I + 1 < num_indices) {
             return do_get<I + 1, Index>();
-        } else if constexpr (I + 1 < num_comparators) {
-            return do_get_comparators<I + 1, Index>();
-        } else if constexpr (I + 1 < num_hashers) {
-            return do_get_hashers<I + 1, Index>();
         }
     }
-
-
-    template <int I = 0, typename Index>
-    auto& do_get_comparators()
-    {
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
-            return get_comparator_instance<I>();
-        }
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>::tag>) {
-            return get_comparator_instance<I>();
-        }
-        else if constexpr (I + 1 < num_comparators) {
-            return do_get_comparators<I + 1, Index>();
-        }
-    }
-
-    template <int I = 0, typename Index>
-    auto& do_get_hashers()
-    {
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
-            return get_hasher_instance<I>();
-        }
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
-            return get_hasher_instance<I>();
-        }
-        else if constexpr (I + 1 < num_hashers) {
-            return do_get_hashers<I + 1, Index>();
-        }
-    }
-
 
     template <int I = 0, typename Index>
     auto& do_get()
     {
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
-            return get_comparator_instance<I>();
-        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>::tag>) {
-            return get_comparator_instance<I>();
-        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
-            return get_hasher_instance<I>();
-        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
-            return get_hasher_instance<I>();
-        } else if constexpr (I + 1 < num_comparators && I + 1 < num_hashers) {
-            return do_get<I + 1, Index>();
-        } else if constexpr (I + 1 < num_comparators) {
-            return do_get_comparators<I + 1, Index>();
-        } else if constexpr (I + 1 < num_hashers) {
-            return do_get_hashers<I + 1, Index>();
-        }
-    }
-/*
-    template <int I = 0, typename Index>
-    auto& do_get()
-    {
-        if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
-            return get_comparator_instance<I>();
-        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
-            return get_hasher_instance<I>();
-        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
-            return get_hasher_instance<I>();
-        } else if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
+        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, index_types>>) {
+            return get_index_instance<I>();
+        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, index_types>::tag>) {
+            return get_index_instance<I>();
+        } else if constexpr (I + 1 < num_indices) {
             return do_get<I + 1, Index>();
         }
     }
 
-    template <int I = 0, typename Index>
-    const auto& do_get() const
+    void do_clear()
     {
-        if constexpr (I < num_comparators && std::is_same_v<Index, typename std::tuple_element_t<I, comparator_types>>) {
-            return get_comparator_instance<I>();
-        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>>) {
-            return get_hasher_instance<I>();
-        } else if constexpr (I < num_hashers && std::is_same_v<Index, typename std::tuple_element_t<I, hasher_types>::tag>) {
-            return get_hasher_instance<I>();
-        } else if constexpr (I + 1 < num_comparators || I + 1 < num_hashers) {
-            return do_get<I + 1, Index>();
-        }
-    }
-*/
-public:
+        foreach_index([this]<int I>(std::nullptr_t) {
+            get_index_instance<I>().do_clear();
+         }, nullptr);
 
-    tmi(const allocator_type& alloc = {}) : m_comparator_instances(index_helper<std::make_index_sequence<num_comparators>>::make_comparator_types(*this)),
-                                            m_hasher_instances(index_helper<std::make_index_sequence<num_hashers>>::make_hasher_types(*this)),
-                                            m_alloc(alloc)
-    {
-    }
-
-    ~tmi()
-    {
-        clear();
-    }
-
-    void clear()
-    {
         auto* node = m_begin;
         while (node) {
             auto* to_delete = node;
@@ -517,20 +322,21 @@ public:
             std::allocator_traits<node_allocator_type>::deallocate(m_alloc, to_delete, 1);
         }
         m_begin = m_end = nullptr;
-
-        foreach_hasher([this]<int I>(std::nullptr_t) {
-            get_hasher_instance<I>().clear();
-         }, nullptr);
-
-        foreach_hasher([this]<int I>(std::nullptr_t) {
-            get_comparator_instance<I>().clear();
-         }, nullptr);
-
     }
 
-    size_t size() const { return m_size; }
+public:
 
-    bool empty() const { return m_size == 0; }
+    tmi(const allocator_type& alloc = {})
+        : inherited_index(*this),
+          m_index_instances(index_helper<std::make_index_sequence<num_indices>>::make_index_types(*this)),
+          m_alloc(alloc)
+    {
+    }
+
+    ~tmi()
+    {
+        do_clear();
+    }
 
     static constexpr size_t node_size()
     {
