@@ -20,15 +20,6 @@
 namespace tmi {
 
 template <typename T, int ComparatorSize, int HashSize>
-struct comparator_insert_hints {
-    using node_type = tminode<T, ComparatorSize, HashSize>;
-    using base_type = node_type::base_type;
-    base_type* m_parent{nullptr};
-    bool m_inserted_left{false};
-};
-
-
-template <typename T, int ComparatorSize, int HashSize>
 struct tmi_comparator_base{};
 
 
@@ -37,10 +28,13 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, HashSize>
 {
     using node_type = tminode<T, ComparatorSize, HashSize>;
     using base_type = node_type::base_type;
-    using insert_hints_type = comparator_insert_hints<T, ComparatorSize, HashSize>;
     using Color = typename base_type::Color;
-
     friend Parent;
+
+    struct insert_hints {
+        base_type* m_parent{nullptr};
+        bool m_inserted_left{false};
+    };
 
     Parent& m_parent;
 
@@ -469,7 +463,7 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, HashSize>
 //===----------------------------------------------------------------------===//
 
 
-    node_type* preinsert_node_comparator(node_type* node, insert_hints_type& hints)
+    node_type* preinsert_node_comparator(node_type* node, insert_hints& hints)
     {
         base_type* parent = nullptr;
         base_type* curr = get_root_base();
@@ -503,7 +497,7 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, HashSize>
         return nullptr;
     }
 
-    void insert_node_comparator(node_type* node, const insert_hints_type& hints)
+    void insert_node_comparator(node_type* node, const insert_hints& hints)
     {
         base_type* base = node->get_base();
         base_type* parent = hints.m_parent;

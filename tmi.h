@@ -34,19 +34,24 @@ public:
     using comparator_base = tmi_comparator_base<T, num_comparators, num_hashers>;
     using hasher_base = tmi_hasher_base<T, num_comparators, num_hashers>;
     static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
-    using hasher_insert_hints_type = hasher_insert_hints<T, num_comparators, num_hashers>;
-    using comparator_insert_hints_type = comparator_insert_hints<T, num_comparators, num_hashers>;
     using hasher_premodify_cache_type = hasher_premodify_cache<T, num_comparators, num_hashers>;
-
-    using comparator_hints_array = std::array<comparator_insert_hints_type, num_comparators>;
-
-    using hasher_hints_array = std::array<hasher_insert_hints_type, num_hashers>;
 
     template <int I>
     using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>, parent_type>;
 
     template <int I>
     using tmi_hasher_type = tmi_hasher<T, num_comparators, num_hashers, I, std::tuple_element_t<I, hasher_types>, parent_type>;
+
+    template <typename>
+    struct index_helper;
+    template <size_t... ints>
+    struct index_helper<std::index_sequence<ints...>> {
+        using hasher_hints = std::tuple< typename tmi_hasher_type<ints>::insert_hints ...>;
+        using comparator_hints = std::tuple< typename tmi_comparator_type<ints>::insert_hints ...>;
+    };
+    using hashers_hints_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_hints;
+    using comparators_hints_tuple = index_helper<std::make_index_sequence<num_comparators>>::comparator_hints;
+
 
     template <int I>
     using sort_iterator = tmi_comparator_type<I>::iterator;
@@ -163,8 +168,9 @@ private:
 
     node_type* do_insert(node_type* node)
     {
-        comparator_hints_array comp_hints;
-        hasher_hints_array hash_hints;
+        comparators_hints_tuple comp_hints;
+        hashers_hints_tuple hash_hints;
+
         bool can_insert;
         node_type* conflict = nullptr;
         can_insert = get_foreach_hasher([this, &conflict]<int I>(node_type* node, auto& hints) {
@@ -281,8 +287,8 @@ private:
         // At this point the node has been removed from all buckets and trees.
         // Test to see if it's reinsertable everywhere or delete it.
 
-        comparator_hints_array comp_hints;
-        hasher_hints_array hash_hints;
+        comparators_hints_tuple comp_hints;
+        hashers_hints_tuple hash_hints;
 
         // Check to see if any new hashes can be safely inserted
         bool insertable = get_foreach_hasher([this]<int I>(node_type* node, const auto& modify, auto& hints) {
