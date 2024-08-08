@@ -103,7 +103,7 @@ class tmi_hasher
         base_type* cur_node = bucket;
         base_type* prev_node = cur_node;
         while (cur_node) {
-            if (cur_node->template hash<I>() == hash && m_hasher(cur_node->node()->value(), node->value())) {
+            if (cur_node->node() == node) {
                 if (cur_node == prev_node) {
                     // head of list
                     bucket = cur_node->template next_hash<I>();
@@ -142,8 +142,10 @@ class tmi_hasher
             base_type* curr = bucket;
             base_type* prev = curr;
             while (curr) {
-                if (m_hasher(curr->node()->value(), node->value())) {
-                    return curr->node();
+                if (curr->template hash<I>() == hash) {
+                    if (m_hasher(curr->node()->value(), node->value())) {
+                        return curr->node();
+                    }
                 }
                 prev = curr;
                 curr = curr->template next_hash<I>();
