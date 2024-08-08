@@ -34,7 +34,6 @@ public:
     using comparator_base = tmi_comparator_base<T, num_comparators, num_hashers>;
     using hasher_base = tmi_hasher_base<T, num_comparators, num_hashers>;
     static_assert(num_comparators > 0 || num_hashers > 0, "No hashers or comparators defined");
-    using hasher_premodify_cache_type = hasher_premodify_cache<T, num_comparators, num_hashers>;
 
     template <int I>
     using tmi_comparator_type = tmi_comparator<T, num_comparators, num_hashers, I, std::tuple_element_t<I, comparator_types>, parent_type>;
@@ -47,10 +46,14 @@ public:
     template <size_t... ints>
     struct index_helper<std::index_sequence<ints...>> {
         using hasher_hints = std::tuple< typename tmi_hasher_type<ints>::insert_hints ...>;
+        using hasher_premodify_cache = std::tuple< typename tmi_hasher_type<ints>::premodify_cache ...>;
         using comparator_hints = std::tuple< typename tmi_comparator_type<ints>::insert_hints ...>;
+        using comparator_premodify_cache = std::tuple< typename tmi_comparator_type<ints>::premodify_cache ...>;
     };
     using hashers_hints_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_hints;
+    using hashers_premodify_cache_tuple = index_helper<std::make_index_sequence<num_hashers>>::hasher_premodify_cache;
     using comparators_hints_tuple = index_helper<std::make_index_sequence<num_comparators>>::comparator_hints;
+    using comparators_premodify_cache_tuple = index_helper<std::make_index_sequence<num_comparators>>::comparator_premodify_cache;
 
 
     template <int I>
@@ -256,16 +259,24 @@ private:
             bool m_do_reinsert{false};
         };
 
-        using hasher_premodify_cache_array = std::array<hasher_premodify_cache_type, num_hashers>;
         using hasher_modify_actions_array = std::array<hash_modify_actions, num_hashers>;
         using comparator_modify_actions_array = std::array<comparator_modify_actions, num_comparators>;
 
 
         // Create a cache of the pre-modified hash buckets
-        hasher_premodify_cache_array hash_cache;
+        hashers_premodify_cache_tuple hash_cache;
         foreach_hasher([this]<int I>(node_type* node, auto& cache) {
-            get_hasher_instance<I>().hasher_create_premodify_cache(node, cache);
+            if constexpr (tmi_hasher_type<I>::requires_premodify_cache()) {
+                get_hasher_instance<I>().hasher_create_premodify_cache(node, cache);
+            }
         }, node, hash_cache);
+
+        comparators_premodify_cache_tuple comp_cache;
+        foreach_comparator([this]<int I>(node_type* node, auto& cache) {
+            if constexpr (tmi_comparator_type<I>::requires_premodify_cache()) {
+                get_comparator_instance<I>().comparator_create_premodify_cache(node, cache);
+            }
+        }, node, comp_cache);
 
 
         func(node->value());
@@ -280,9 +291,9 @@ private:
 
 
         // Erase modified sorts
-        foreach_comparator([this]<int I>(node_type* node, auto& modify) {
-            modify.m_do_reinsert = get_comparator_instance<I>().comparator_erase_if_modified(node);
-        }, node, comp_modify);
+        foreach_comparator([this]<int I>(node_type* node, auto& modify, const auto& cache) {
+            modify.m_do_reinsert = get_comparator_instance<I>().comparator_erase_if_modified(node, cache);
+        }, node, comp_modify, comp_cache);
 
         // At this point the node has been removed from all buckets and trees.
         // Test to see if it's reinsertable everywhere or delete it.

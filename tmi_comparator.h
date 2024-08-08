@@ -36,6 +36,9 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, HashSize>
         bool m_inserted_left{false};
     };
 
+    struct premodify_cache{};
+    static consteval bool requires_premodify_cache() { return false; }
+
     Parent& m_parent;
 
     base_type m_roots;
@@ -514,7 +517,7 @@ class tmi_comparator : public tmi_comparator_base<T, ComparatorSize, HashSize>
         tree_balance_after_insert(get_root_base(), base);
     }
 
-    bool comparator_erase_if_modified(node_type* node)
+    bool comparator_erase_if_modified(node_type* node, const premodify_cache&)
     {
         base_type* base = node->get_base();
         base_type* next_ptr = nullptr;

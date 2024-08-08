@@ -17,15 +17,6 @@
 namespace tmi {
 
 template <typename T, int ComparatorSize, int HashSize>
-struct hasher_premodify_cache {
-    using node_type = tminode<T, ComparatorSize, HashSize>;
-    using base_type = node_type::base_type;
-    bool m_is_head{false};
-    base_type** m_bucket{nullptr};
-    base_type* m_prev{nullptr};
-};
-
-template <typename T, int ComparatorSize, int HashSize>
 struct tmi_hasher_base{};
 
 
@@ -35,7 +26,6 @@ class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, HashSize>
     using node_type = tminode<T, ComparatorSize, HashSize>;
     using base_type = node_type::base_type;
     using hash_buckets = std::vector<base_type*>;
-    using premodify_cache = hasher_premodify_cache<T, ComparatorSize, HashSize>;
     using hash_type = Hasher::hash_type;
     friend Parent;
 
@@ -43,6 +33,14 @@ class tmi_hasher : public tmi_hasher_base<T, ComparatorSize, HashSize>
         size_t m_hash{0};
         base_type** m_bucket{nullptr};
     };
+
+    struct premodify_cache {
+        bool m_is_head{false};
+        base_type** m_bucket{nullptr};
+        base_type* m_prev{nullptr};
+    };
+
+    static consteval bool requires_premodify_cache() { return true; }
 
     static constexpr size_t first_hashes_resize = 2048;
 
