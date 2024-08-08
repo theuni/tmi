@@ -244,7 +244,6 @@ private:
         struct modify_actions {
             bool m_do_reinsert{false};
         };
-        using index_modify_actions_array = std::array<modify_actions, num_indices>;
 
         indices_premodify_cache_tuple index_cache;
 
@@ -257,19 +256,19 @@ private:
 
         func(node->value());
 
-        index_modify_actions_array index_modify;
+        std::array<bool, num_indices> indicies_to_modify{};
 
         foreach_index([this]<int I>(node_type* node, auto& modify, const auto& cache) {
-            modify.m_do_reinsert = get_index_instance<I>().erase_if_modified(node, cache);
-         }, node, index_modify, index_cache);
+            modify = get_index_instance<I>().erase_if_modified(node, cache);
+         }, node, indicies_to_modify, index_cache);
 
 
         indices_hints_tuple index_hints;
 
         bool insertable = get_foreach_index([this]<int I>(node_type* node, const auto& modify, auto& hints) {
-            if (modify.m_do_reinsert) return get_index_instance<I>().preinsert_node(node, hints) == nullptr;
+            if (modify) return get_index_instance<I>().preinsert_node(node, hints) == nullptr;
             return true;
-        }, node, index_modify, index_hints);
+        }, node, indicies_to_modify, index_hints);
 
         if (!insertable) {
             do_erase_cleanup(node);
@@ -277,9 +276,8 @@ private:
         }
 
         foreach_index([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
-            if (modify.m_do_reinsert) get_index_instance<I>().insert_node(node, hints);
-            return true;
-        }, node, index_modify, index_hints);
+            if (modify) get_index_instance<I>().insert_node(node, hints);
+        }, node, indicies_to_modify, index_hints);
 
         return true;
     }
