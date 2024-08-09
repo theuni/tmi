@@ -141,7 +141,7 @@ public:
     }
 
     template <int I>
-    size_t hash()
+    size_t hash() const
     {
         return std::get<I>(m_data).m_hash;
     }

@@ -462,7 +462,7 @@ class tmi_comparator
 //===----------------------------------------------------------------------===//
 
 
-    void remove_node(base_type* node)
+    void remove_node(node_type* node)
     {
         tree_remove(node->get_base());
     }

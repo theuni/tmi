@@ -239,26 +239,26 @@ public:
 
     class iterator
     {
-        node_type* m_node{};
+        const node_type* m_node{};
         const hash_buckets* m_buckets{nullptr};
 
-        iterator(node_type* node, const hash_buckets* buckets) : m_node(node), m_buckets(buckets) {}
+        iterator(const node_type* node, const hash_buckets* buckets) : m_node(node), m_buckets(buckets) {}
         friend class tmi_hasher;
         friend Parent;
     public:
 
-        typedef T value_type;
-        typedef T* pointer;
-        typedef T& reference;
-        using element_type = T;
+        typedef const T value_type;
+        typedef const T* pointer;
+        typedef const T& reference;
+        using element_type = const T;
         iterator() = default;
-        T& operator*() const { return m_node->value(); }
-        T* operator->() const { return &m_node->value(); }
+        const T& operator*() const { return m_node->value(); }
+        const T* operator->() const { return &m_node->value(); }
         iterator& operator++()
         {
-            base_type* next = get_next_hash(m_node->get_base());
+            const base_type* next = m_node->get_base()->template next_hash<I>();
             if (!next) {
-                size_t bucket = m_node->base()->template hash<I>() % m_buckets->size();
+                size_t bucket = m_node->get_base()->template hash<I>() % m_buckets->size();
                 bucket++;
                 for (; bucket < m_buckets->size(); ++bucket) {
                     next = m_buckets->at(bucket);
@@ -279,52 +279,9 @@ public:
         }
         bool operator==(iterator rhs) const { return m_node == rhs.m_node; }
         bool operator!=(iterator rhs) const { return m_node != rhs.m_node; }
-    };
-
-    class const_iterator
-    {
-        //TODO: Make const
-        node_type* m_node{};
-
-        const hash_buckets* m_buckets{nullptr};
-
-        const_iterator(node_type* node, const hash_buckets* buckets) : m_node(node), m_buckets(buckets) {}
-        friend class tmi_hasher;
-    public:
-        typedef const T value_type;
-        typedef const T* pointer;
-        typedef const T& reference;
-        using element_type = const T;
-        const_iterator() = default;
-        const_iterator(const iterator& rhs) : m_node(rhs.m_node), m_buckets(rhs.m_buckets) {}
-        const T& operator*() const { return m_node->value(); }
-        const T* operator->() const { return &m_node->value(); }
-        const_iterator& operator++()
-        {
-            base_type* next = get_next_hash(m_node->get_base());
-            if (!next) {
-                size_t bucket = m_node->base()->template hash<I>() % m_buckets->size();
-                bucket++;
-                for (; bucket < m_buckets->size(); ++bucket) {
-                    next = m_buckets->at(bucket);
-                }
-            }
-            if (next == nullptr) {
-                m_node = nullptr;
-            } else {
-                m_node = next->node();
-            }
-            return *this;
-        }
-        const_iterator operator++(int)
-        {
-            const_iterator copy(m_node, m_buckets);
-            ++(*this);
-            return copy;
-        }
-        bool operator==(const_iterator rhs) const { return m_node == rhs.m_node; }
-        bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
-    };
+    }
+;
+    using const_iterator = iterator;
 
     iterator begin()
     {
@@ -348,21 +305,27 @@ public:
         return const_iterator(nullptr, &m_buckets);
     }
 
+    iterator end()
+    {
+        return const_iterator(nullptr, &m_buckets);
+    }
+
     const_iterator end() const
     {
         return const_iterator(nullptr, &m_buckets);
     }
 
-    iterator end()
-    {
-        return iterator(nullptr, &m_buckets);
-    }
-
-    iterator iterator_to(const T& entry) const
+    iterator iterator_to(const T& entry)
     {
         T& ref = const_cast<T&>(entry);
         node_type* node = reinterpret_cast<node_type*>(&ref);
         return iterator(node, &m_buckets);
+    }
+
+    const_iterator iterator_to(const T& entry) const
+    {
+        const node_type* node = reinterpret_cast<const node_type*>(&entry);
+        return const_iterator(node, &m_buckets);
     }
 
     template <typename... Args>
@@ -375,15 +338,7 @@ public:
     template <typename Callable>
     bool modify(iterator it, Callable&& func)
     {
-        node_type* node = it.m_node;
-        if (!node) return false;
-        return m_parent.do_modify(node, std::forward<Callable>(func));
-    }
-
-    template <typename Callable>
-    bool modify(const_iterator it, Callable&& func)
-    {
-        node_type* node = it.m_node;
+        node_type* node = const_cast<node_type*>(it.m_node);
         if (!node) return false;
         return m_parent.do_modify(node, std::forward<Callable>(func));
     }
@@ -430,7 +385,7 @@ public:
 
     iterator erase(iterator it)
     {
-        node_type* node = it.m_node;
+        node_type* node = const_cast<node_type*>(it.m_node);
         if (!node) return iterator(nullptr, &m_buckets);
         size_t hash = node->get_base()->template hash<I>();
         base_type* next = get_next_hash(node->get_base());
@@ -441,23 +396,7 @@ public:
             }
         }
         m_parent.do_erase(node);
-        return iterator(next->node, &m_buckets);
-    }
-
-    iterator erase(const_iterator it)
-    {
-        node_type* node = it.m_node;
-        if (!node) return iterator(nullptr, &m_buckets);
-        size_t hash = node->get_base()->template hash<I>();
-        base_type* next = get_next_hash(node->get_base());
-        if (!next) {
-            for (size_t bucket = hash % m_buckets.size(); bucket < m_buckets.size(); ++bucket) {
-                next = m_buckets.at(bucket);
-                if (next != nullptr) break;
-            }
-        }
-        m_parent.do_erase(node);
-        return iterator(next->node, &m_buckets);
+        return iterator(next->node(), &m_buckets);
     }
 
     size_t count(const T& value) const
@@ -521,11 +460,10 @@ public:
 
 private:
 
-    iterator make_iterator(node_type* node) const
+    iterator make_iterator(const node_type* node) const
     {
         return iterator(node, &m_buckets);
     }
-
 };
 
 } // namespace tmi

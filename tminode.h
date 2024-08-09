@@ -43,6 +43,11 @@ public:
         return &m_base;
     }
 
+    const base_type* get_base() const
+    {
+        return &m_base;
+    }
+
     tminode* next() const { return m_next; }
     tminode* prev() const { return m_prev; }
 
