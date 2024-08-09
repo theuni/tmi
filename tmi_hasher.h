@@ -262,6 +262,9 @@ public:
                 bucket++;
                 for (; bucket < m_buckets->size(); ++bucket) {
                     next = m_buckets->at(bucket);
+                    if (next) {
+                        break;
+                    }
                 }
             }
             if (next == nullptr) {
