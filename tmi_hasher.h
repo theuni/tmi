@@ -170,7 +170,7 @@ class tmi_hasher
         base_type* cur_node = bucket;
         base_type* prev_node = cur_node;
         while (cur_node) {
-            if (cur_node->template hash<I>() == hash && m_hasher(cur_node->node()->value(), node->value())) {
+            if (cur_node->node() == node) {
                 if (cur_node == prev_node) {
                     cache.m_bucket = &bucket;
                     cache.m_is_head = true;
