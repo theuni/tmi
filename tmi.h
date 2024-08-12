@@ -20,27 +20,8 @@ namespace tmi {
 
 namespace detail {
 
-/*
-    Helper to find the first index which tmi should inherit from
-*/
-template <typename T, typename Indices, typename Allocator, typename Parent>
-struct first_index_type_helper
-{
-    using index_types = typename Indices::index_types;
-    using node_type = tminode<T, Indices>;
-    using value = typename std::tuple_element_t<0, index_types>::sorted;
-    using comparator = tmi_comparator<T, node_type, std::tuple_element_t<0, index_types>, Parent, 0>;
-    using hasher = tmi_hasher<T, node_type, std::tuple_element_t<0, index_types>, Parent, 0>;
-    using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
-};
-
-/* These null helpers allow for a dummy instance to be created as the first
-   tuple member. Later, get_instance will refer back to *this rather than
-   the dummy.
-*/
-
 template <typename T, typename Indices, typename Allocator, typename Parent, int I>
-struct maybe_null_index_type_helper
+struct index_type_helper
 {
     using index_types = typename Indices::index_types;
     using node_type = tminode<T, Indices>;
@@ -48,36 +29,12 @@ struct maybe_null_index_type_helper
     using comparator = tmi_comparator<T, node_type, std::tuple_element_t<I, index_types>, Parent, I>;
     using hasher = tmi_hasher<T, node_type, std::tuple_element_t<I, index_types>, Parent, I>;
     using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
-    struct null_instance{
-        null_instance(Parent& parent) : m_parent(parent){}
-        Parent& m_parent;
-    };
 };
-
-template <typename T, typename Indices, typename Allocator, typename Parent>
-struct maybe_null_index_type_helper<T, Indices, Allocator, Parent, 0>
-{
-    struct null_instance{
-        null_instance(Parent& parent) : m_parent(parent){}
-        Parent& m_parent;
-    };
-    using type = null_instance;
-};
-
-template <typename Tag, typename Indices, size_t I = 0>
-static constexpr size_t get_index_for_tag()
-{
-    using index_types = typename Indices::index_types;
-    constexpr size_t num_indices = std::tuple_size<index_types>();
-    if constexpr (std::is_same_v<typename std::tuple_element_t<I, index_types>::tag, Tag>) return I;
-    else if constexpr (I + 1 < num_indices) return get_index_for_tag<Tag, Indices, I + 1>();
-    else return num_indices;
-}
 
 }
 
 template <typename T, typename Indices, typename Allocator = std::allocator<T>>
-class tmi : public detail::first_index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>>::type
+class tmi : public detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, 0>::type
 {
 public:
     using parent_type = tmi<T, Indices, Allocator>;
@@ -85,50 +42,48 @@ public:
     using index_types = typename Indices::index_types;
     using node_type = tminode<T, Indices>;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
-    using base_type = typename node_type::base_type;
-    using inherited_index = typename detail::first_index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>>::type;
+    using inherited_index = typename detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, 0>::type;
     static constexpr size_t num_indices = std::tuple_size<index_types>();
+
+    struct null_index_type{};
 
     template <int I>
     struct nth_index
     {
-        using value = typename std::tuple_element_t<I, index_types>::sorted;
-        using comparator = tmi_comparator<T, node_type, std::tuple_element_t<I, index_types>, parent_type, I>;
-        using hasher = tmi_hasher<T, node_type, std::tuple_element_t<I, index_types>, parent_type, I>;
-    public:
-        using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
+        using type = typename detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, I>::type;
     };
 
     template <typename Tag>
     struct index
     {
-        static constexpr size_t value = detail::get_index_for_tag<Tag, Indices>();
+        template <size_t I = 0>
+        static constexpr size_t get_index_for_tag()
+        {
+            if constexpr (std::is_same_v<typename std::tuple_element_t<I, index_types>::tag, Tag>) return I;
+            else if constexpr (I + 1 < num_indices) return get_index_for_tag<I + 1>();
+            else return num_indices;
+        }
+        static constexpr size_t value = get_index_for_tag();
         static_assert(value < num_indices, "tag not found");
         using type = typename nth_index<value>::type;
     };
 
-    template <int I>
-    using maybe_null_tmi_index_type = typename detail::maybe_null_index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, I>::type; 
-
-    template <int I>
-    using tmi_index_type = typename nth_index<I>::type;
-
     template <typename>
-    struct index_helper;
-    template <size_t... ints>
-    struct index_helper<std::index_sequence<ints...>> {
-        using index_types = std::tuple<maybe_null_tmi_index_type<ints> ...>;
-        using hints_types =  std::tuple<typename tmi_index_type<ints>::insert_hints ...>;
-        using premodify_cache_types = std::tuple<typename tmi_index_type<ints>::premodify_cache ...>;
+    struct index_tuple_helper;
+    template <size_t First, size_t... ints>
+    struct index_tuple_helper<std::index_sequence<First, ints...>> {
+        using index_types = std::tuple<null_index_type, typename nth_index<ints>::type ...>;
+        using hints_types =  std::tuple<typename nth_index<First>::type::insert_hints, typename nth_index<ints>::type::insert_hints ...>;
+        using premodify_cache_types = std::tuple<typename nth_index<First>::type::premodify_cache, typename nth_index<ints>::type::premodify_cache ...>;
 
         static index_types make_index_types(parent_type& parent) {
-            return std::make_tuple( maybe_null_tmi_index_type<ints>(parent) ...);
+            return std::make_tuple(null_index_type(), typename nth_index<ints>::type(parent) ...);
         }
     };
 
-    using indices_tuple = typename index_helper<std::make_index_sequence<num_indices>>::index_types;
-    using indices_hints_tuple = typename index_helper<std::make_index_sequence<num_indices>>::hints_types;
-    using indices_premodify_cache_tuple = typename index_helper<std::make_index_sequence<num_indices>>::premodify_cache_types;
+    using indices_tuple = typename index_tuple_helper<std::make_index_sequence<num_indices>>::index_types;
+    using indices_hints_tuple = typename index_tuple_helper<std::make_index_sequence<num_indices>>::hints_types;
+    using indices_premodify_cache_tuple = typename index_tuple_helper<std::make_index_sequence<num_indices>>::premodify_cache_types;
 
 
     template <typename, typename, typename, typename, int>
@@ -267,7 +222,7 @@ private:
         indices_premodify_cache_tuple index_cache;
 
         foreach_index([this]<int I>(node_type* node, auto& cache) {
-            if constexpr (tmi_index_type<I>::requires_premodify_cache()) {
+            if constexpr (nth_index<I>::type::requires_premodify_cache()) {
                 get_index_instance<I>().create_premodify_cache(node, cache);
             }
         }, node, index_cache);
@@ -321,7 +276,7 @@ public:
 
     tmi(const allocator_type& alloc = {})
         : inherited_index(*this),
-          m_index_instances(index_helper<std::make_index_sequence<num_indices>>::make_index_types(*this)),
+          m_index_instances(index_tuple_helper<std::make_index_sequence<num_indices>>::make_index_types(*this)),
           m_alloc(alloc)
     {
     }
