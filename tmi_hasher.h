@@ -43,7 +43,6 @@ class tmi_hasher
     Parent& m_parent;
     Hasher m_hasher;
     hash_buckets m_buckets;
-    size_t m_size = 0;
 
     tmi_hasher(Parent& parent) : m_parent(parent){}
 
@@ -110,7 +109,6 @@ class tmi_hasher
                 } else {
                     prev_node->template set_next_hashptr<I>(cur_node->template next_hash<I>());
                 }
-                m_size--;
                 break;
             }
             prev_node = cur_node;
@@ -130,7 +128,7 @@ class tmi_hasher
         if (!bucket_count) {
             m_buckets.resize(first_hashes_resize, nullptr);
             bucket_count = first_hashes_resize;
-        } else if (static_cast<double>(m_size) / static_cast<double>(bucket_count) >= 0.8) {
+        } else if (static_cast<double>(m_parent.get_size()) / static_cast<double>(bucket_count) >= 0.8) {
             bucket_count *= 2;
             rehash(bucket_count);
         }
@@ -194,7 +192,6 @@ class tmi_hasher
             } else {
                 cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
             }
-            m_size--;
             return true;
         }
         return false;
@@ -206,7 +203,6 @@ class tmi_hasher
         node_base->template set_hash<I>(hints.m_hash);
         node_base->template set_next_hashptr<I>(*hints.m_bucket);
         *hints.m_bucket = node_base;
-        m_size++;
     }
 
 
@@ -232,7 +228,6 @@ class tmi_hasher
     void do_clear()
     {
         m_buckets.clear();
-        m_size = 0;
     }
 
 public:
@@ -453,12 +448,12 @@ public:
 
     size_t size() const
     {
-        return m_size;
+        return m_parent.get_size();
     }
 
     bool empty() const
     {
-        return m_size == 0;
+        return m_parent.get_empty();
     }
 
 private:

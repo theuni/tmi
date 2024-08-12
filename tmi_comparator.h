@@ -687,6 +687,16 @@ public:
         m_parent.do_clear();
     }
 
+    size_t size() const
+    {
+        return m_parent.get_size();
+    }
+
+    bool empty() const
+    {
+        return m_parent.get_empty();
+    }
+
 private:
 
     iterator make_iterator(node_type* node) const

@@ -272,6 +272,16 @@ private:
         m_begin = m_end = nullptr;
     }
 
+    size_t get_size() const
+    {
+        return m_size;
+    }
+
+    bool get_empty() const
+    {
+        return m_size == 0;
+    }
+
 public:
 
     tmi(const allocator_type& alloc = {})
