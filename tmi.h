@@ -64,6 +64,16 @@ struct maybe_null_index_type_helper<T, Indices, Allocator, Parent, 0>
     using type = null_instance;
 };
 
+template <typename Tag, typename Indices, size_t I = 0>
+static constexpr size_t get_index_for_tag()
+{
+    using index_types = typename Indices::index_types;
+    constexpr size_t num_indices = std::tuple_size<index_types>();
+    if constexpr (std::is_same_v<typename std::tuple_element_t<I, index_types>::tag, Tag>) return I;
+    else if constexpr (I + 1 < num_indices) return get_index_for_tag<Tag, Indices, I + 1>();
+    else return num_indices;
+}
+
 }
 
 template <typename T, typename Indices, typename Allocator = std::allocator<T>>
@@ -77,21 +87,31 @@ public:
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using base_type = typename node_type::base_type;
     using inherited_index = typename detail::first_index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>>::type;
+    static constexpr size_t num_indices = std::tuple_size<index_types>();
 
     template <int I>
-    struct index_type_helper
+    struct nth_index
     {
         using value = typename std::tuple_element_t<I, index_types>::sorted;
         using comparator = tmi_comparator<T, node_type, std::tuple_element_t<I, index_types>, parent_type, I>;
         using hasher = tmi_hasher<T, node_type, std::tuple_element_t<I, index_types>, parent_type, I>;
+    public:
         using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
+    };
+
+    template <typename Tag>
+    struct index
+    {
+        static constexpr size_t value = detail::get_index_for_tag<Tag, Indices>();
+        static_assert(value < num_indices, "tag not found");
+        using type = typename nth_index<value>::type;
     };
 
     template <int I>
     using maybe_null_tmi_index_type = typename detail::maybe_null_index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, I>::type; 
 
     template <int I>
-    using tmi_index_type = typename index_type_helper<I>::type;
+    using tmi_index_type = typename nth_index<I>::type;
 
     template <typename>
     struct index_helper;
@@ -106,7 +126,6 @@ public:
         }
     };
 
-    static constexpr size_t num_indices = std::tuple_size<index_types>();
     using indices_tuple = typename index_helper<std::make_index_sequence<num_indices>>::index_types;
     using indices_hints_tuple = typename index_helper<std::make_index_sequence<num_indices>>::hints_types;
     using indices_premodify_cache_tuple = typename index_helper<std::make_index_sequence<num_indices>>::premodify_cache_types;
@@ -155,7 +174,7 @@ private:
     }
 
     template <int I>
-    const auto& get_index_instance() const
+    const auto& get_index_instance() const noexcept
     {
         if constexpr(I == 0) {
             return(*static_cast<const inherited_index*>(this));
@@ -165,7 +184,7 @@ private:
     }
 
     template <int I>
-    auto& get_index_instance()
+    auto& get_index_instance() noexcept
     {
         if constexpr(I == 0) {
             return(*static_cast<inherited_index*>(this));
@@ -282,30 +301,6 @@ private:
         return true;
     }
 
-    template <int I = 0, typename Index>
-    const auto& do_get() const
-    {
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, index_types>>) {
-            return get_index_instance<I>();
-        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, index_types>::tag>) {
-            return get_index_instance<I>();
-        } else if constexpr (I + 1 < num_indices) {
-            return do_get<I + 1, Index>();
-        }
-    }
-
-    template <int I = 0, typename Index>
-    auto& do_get()
-    {
-        if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, index_types>>) {
-            return get_index_instance<I>();
-        } else if constexpr (std::is_same_v<Index, typename std::tuple_element_t<I, index_types>::tag>) {
-            return get_index_instance<I>();
-        } else if constexpr (I + 1 < num_indices) {
-            return do_get<I + 1, Index>();
-        }
-    }
-
     void do_clear()
     {
         foreach_index([this]<int I>(std::nullptr_t) {
@@ -341,24 +336,54 @@ public:
         return sizeof(node_type);
     }
 
-    template <typename Index>
-    auto project(auto it) const
+
+    template<size_t I, typename IteratorType>
+    typename nth_index<I>::type::iterator project(IteratorType it)
     {
-        return do_get<0, Index>().make_iterator(it.m_node);
+        return get_index_instance<I>().make_iterator(it.m_node);
     }
 
-    template <typename Index>
-    auto& get()
+    template<size_t I, typename IteratorType>
+    typename nth_index<I>::type::const_iterator project(IteratorType it) const
     {
-        return do_get<0, Index>();
+        return get_index_instance<I>().make_iterator(it.m_node);
     }
 
-    template <typename Index>
-    const auto& get() const
+    template<typename Tag, typename IteratorType>
+    typename index<Tag>::type::iterator project(IteratorType it)
     {
-        return do_get<0, Index>();
+        return get_index_instance<index<Tag>::value>().make_iterator(it.m_node);
     }
 
+    template<typename Tag,typename IteratorType>
+    typename index<Tag>::type::const_iterator project(IteratorType it) const
+    {
+        return get_index_instance<index<Tag>::value>().make_iterator(it.m_node);
+    }
+
+    template<size_t I>
+    typename nth_index<I>::type& get() noexcept
+    {
+        return get_index_instance<I>();
+    }
+
+    template<int I> const typename
+    nth_index<I>::type& get() const noexcept
+    {
+        return get_index_instance<I>();
+    }
+
+    template<typename Tag>
+    typename index<Tag>::type& get() noexcept
+    {
+        return get_index_instance<index<Tag>::value>();
+    }
+
+    template<typename Tag>
+    const typename index<Tag>::type& get() const noexcept
+    {
+        return get_index_instance<index<Tag>::value>();
+    }
 };
 
 } // namespace tmi
