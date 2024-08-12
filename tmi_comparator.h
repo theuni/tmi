@@ -136,7 +136,18 @@ class tmi_comparator
       return x;
     }
 
+    static const base_type* tree_max(const base_type* x) {
+      while (x->template right<I>() != nullptr)
+        x = x->template right<I>();
+      return x;
+    }
+
     static bool tree_is_left_child(base_type* x)
+    {
+        return x == x->template parent<I>()->template left<I>();
+    }
+
+    static bool tree_is_left_child(const base_type* x)
     {
         return x == x->template parent<I>()->template left<I>();
     }
@@ -157,7 +168,24 @@ class tmi_comparator
         return x->template parent<I>();
     }
 
+    static const base_type* tree_next(const base_type* x)
+    {
+        if (x->template right<I>() != nullptr)
+            return tree_min(x->template right<I>());
+        while (!tree_is_left_child(x))
+            x = x->template parent<I>();
+        return x->template parent<I>();
+    }
+
     static base_type* tree_prev(base_type* x) {
+      if (x->template left<I>() != nullptr)
+        return tree_max(x->template left<I>());
+      while (tree_is_left_child(x))
+        x = x->template parent<I>();
+      return x->template parent<I>();
+    }
+
+    static const base_type* tree_prev(const base_type* x) {
       if (x->template left<I>() != nullptr)
         return tree_max(x->template left<I>());
       while (tree_is_left_child(x))
@@ -550,52 +578,12 @@ class tmi_comparator
 
 public:
 
-    class iterator
-    {
-        node_type* m_node{};
-
-        iterator(node_type* node) : m_node(node) {}
-    public:
-        friend tmi_comparator;
-        friend Parent;
-        typedef T value_type;
-        typedef T* pointer;
-        typedef T& reference;
-        using element_type = T;
-        iterator() = default;
-        T& operator*() const { return m_node->value(); }
-        T* operator->() const { return &m_node->value(); }
-        iterator& operator++()
-        {
-            m_node = tree_next(m_node->get_base())->node();
-            return *this;
-        }
-        iterator& operator--()
-        {
-            m_node = tree_prev(m_node->get_base())->node();
-            return *this;
-        }
-        iterator operator++(int)
-        {
-            iterator copy(m_node);
-            ++(*this);
-            return copy;
-        }
-        iterator operator--(int)
-        {
-            iterator copy(m_node);
-            --(*this);
-            return copy;
-        }
-        bool operator==(iterator rhs) const { return m_node == rhs.m_node; }
-        bool operator!=(iterator rhs) const { return m_node != rhs.m_node; }
-    };
-
     class const_iterator
     {
         const node_type* m_node{};
         const_iterator(const node_type* node) : m_node(node) {}
-
+        friend tmi_comparator;
+        friend Parent;
     public:
         typedef const T value_type;
         typedef const T* pointer;
@@ -606,7 +594,7 @@ public:
         const T* operator->() const { return &m_node->value(); }
         const_iterator& operator++()
         {
-            m_node = tree_next(m_node->get_base())->m_node();
+            m_node = tree_next(m_node->get_base())->node();
             return *this;
         }
         const_iterator& operator--()
@@ -629,6 +617,7 @@ public:
         bool operator==(const_iterator rhs) const { return m_node == rhs.m_node; }
         bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
     };
+    using iterator = const_iterator;
 
     template <typename... Args>
     std::pair<iterator,bool> emplace(Args&&... args)
