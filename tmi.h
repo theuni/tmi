@@ -18,6 +18,66 @@
 
 namespace tmi {
 
+struct hashed_type{};
+struct ordered_type{};
+
+template<typename... Tags>
+struct tag
+{
+   using type = std::tuple<Tags...>;
+};
+
+template <typename Value>
+struct identity
+{
+    using result_type = Value;
+    const Value& operator()(const Value& val) { return val; }
+};
+
+template <typename TagList, typename KeyFromValue, typename Hash=std::hash<typename KeyFromValue::result_type>, typename Pred=std::equal_to<typename KeyFromValue::result_type>>
+struct hashed_unique : hashed_type
+{
+    using tags = typename TagList::type;
+    using key_from_value_type = KeyFromValue;
+    using hasher_type = Hash;
+    using pred_type = Pred;
+    static constexpr bool is_hashed_unique() { return true; }
+};
+
+template <typename TagList, typename KeyFromValue, typename Hash=std::hash<typename KeyFromValue::result_type>, typename Pred=std::equal_to<typename KeyFromValue::result_type>>
+struct hashed_non_unique : hashed_type
+{
+    using tags = typename TagList::type;
+    using key_from_value_type = KeyFromValue;
+    using hasher_type = Hash;
+    using pred_type = Pred;
+    static constexpr bool is_hashed_unique() { return false; }
+};
+
+template<typename TagList, typename KeyFromValue, typename Compare=std::less<typename KeyFromValue::result_type>>
+struct ordered_unique
+{
+    using tags = typename TagList::type;
+    using key_from_value_type = KeyFromValue;
+    using comparator = Compare;
+    static constexpr bool is_ordered_unique() { return true; }
+};
+
+template<typename TagList, typename KeyFromValue, typename Compare=std::less<typename KeyFromValue::result_type>>
+struct ordered_non_unique
+{
+    using tags = typename TagList::type;
+    using key_from_value_type = KeyFromValue;
+    using comparator = Compare;
+    static constexpr bool is_ordered_unique() { return false; }
+};
+
+template<typename... Indices>
+struct indexed_by
+{
+   using index_types = std::tuple<Indices...>;
+};
+
 namespace detail {
 
 template <typename T, typename Indices, typename Allocator, typename Parent, int I>
@@ -25,10 +85,10 @@ struct index_type_helper
 {
     using index_types = typename Indices::index_types;
     using node_type = tminode<T, Indices>;
-    using value = typename std::tuple_element_t<I, index_types>::sorted;
-    using comparator = tmi_comparator<T, node_type, std::tuple_element_t<I, index_types>, Parent, I>;
-    using hasher = tmi_hasher<T, node_type, std::tuple_element_t<I, index_types>, Parent, I>;
-    using type = std::conditional_t<std::is_same_v<value, std::true_type>, comparator, hasher>;
+    using index_type = std::tuple_element_t<I, index_types>;
+    using comparator = tmi_comparator<T, node_type, index_type, Parent, I>;
+    using hasher = tmi_hasher<T, node_type, index_type, Parent, I>;
+    using type = std::conditional_t<std::is_base_of_v<hashed_type, index_type>, hasher, comparator>;
 };
 
 }
@@ -54,11 +114,16 @@ public:
     template <typename Tag>
     struct index
     {
-        template <size_t I = 0>
+        template <size_t I = 0, size_t J = 0>
         static constexpr size_t get_index_for_tag()
         {
-            if constexpr (std::is_same_v<typename std::tuple_element_t<I, index_types>::tag, Tag>) return I;
-            else if constexpr (I + 1 < num_indices) return get_index_for_tag<I + 1>();
+            using tags = typename std::tuple_element_t<I, index_types>::tags;
+            constexpr size_t tag_count = std::tuple_size<tags>();
+            using tag = typename std::tuple_element_t<J, tags>;
+
+            if constexpr (std::is_same_v<tag, Tag>) return I;
+            else if constexpr (J + 1 < tag_count) return get_index_for_tag<I, J + 1>();
+            else if constexpr (I + 1 < num_indices) return get_index_for_tag<I + 1, 0>();
             else return num_indices;
         }
         static constexpr size_t value = get_index_for_tag();

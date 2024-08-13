@@ -25,6 +25,10 @@ class tmi_comparator
     using node_type = Node;
     using base_type = typename node_type::base_type;
     using Color = typename base_type::Color;
+    using key_from_value_type = typename Comparator::key_from_value_type;
+    using comparator_type = typename Comparator::comparator;
+
+    static constexpr bool sorted_unique() { return Comparator::is_ordered_unique(); }
     friend Parent;
 
     struct insert_hints {
@@ -38,7 +42,8 @@ class tmi_comparator
     Parent& m_parent;
 
     base_type m_roots;
-    Comparator m_comparator;
+    comparator_type m_comparator;
+    key_from_value_type m_key_from_value;
 
     tmi_comparator(Parent& parent) : m_parent(parent){}
 
@@ -499,23 +504,24 @@ class tmi_comparator
     {
         base_type* parent = nullptr;
         base_type* curr = get_root_base();
+        const auto& key = m_key_from_value(node->value());
 
         bool inserted_left = false;
         while (curr != nullptr) {
             parent = curr;
-
-            if constexpr (Comparator::sorted_unique()) {
-                if (m_comparator(node->value(), curr->node()->value())) {
+            const auto& curr_key = m_key_from_value(curr->node()->value());
+            if constexpr (sorted_unique()) {
+                if (m_comparator(key, curr_key)) {
                     curr = curr->template left<I>();
                     inserted_left = true;
-                } else if (m_comparator(curr->node()->value(), node->value())) {
+                } else if (m_comparator(curr_key, key)) {
                     curr = curr->template right<I>();
                     inserted_left = false;
                 } else {
                     return curr->node();
                 }
             } else {
-                if (m_comparator(node->value(), curr->node()->value())) {
+                if (m_comparator(key, curr_key)) {
                     curr = curr->template left<I>();
                     inserted_left = true;
                 } else {
@@ -558,8 +564,10 @@ class tmi_comparator
         if (base != tree_max(root))
             next_ptr = tree_next(base);
 
-        bool needs_resort = ((next_ptr != nullptr && m_comparator(next_ptr->node()->value(), node->value())) ||
-                             (prev_ptr != nullptr && m_comparator(node->value(), prev_ptr->node()->value())));
+        const auto& key = m_key_from_value(node->value());
+
+        bool needs_resort = ((next_ptr != nullptr && m_comparator(m_key_from_value(next_ptr->node()->value()), key)) ||
+                             (prev_ptr != nullptr && m_comparator(key, m_key_from_value(prev_ptr->node()->value()))));
         if (needs_resort) {
             tree_remove(base);
             base->template set_parent<I>(nullptr);
@@ -659,11 +667,13 @@ public:
     {
         base_type* parent = nullptr;
         base_type* curr = get_root_base();
+        const auto& key = m_key_from_value(value);
         while (curr != nullptr) {
             parent = curr;
-            if (m_comparator(value, curr->node()->value())) {
+            const auto& curr_key = m_key_from_value(curr->node()->value());
+            if (m_comparator(key, curr_key)) {
                 curr = curr->template left<I>();
-            } else if (m_comparator(curr->node()->value(), value)) {
+            } else if (m_comparator(curr_key, key)) {
                 curr = curr->template right<I>();
             } else {
                 return iterator(curr->node());

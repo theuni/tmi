@@ -46,6 +46,7 @@ public:
     static constexpr bool sorted_type() { return false;}
     using tag = hash_unique;
     using hash_type = size_t;
+    using result_type = size_t;
     constexpr static bool hashed_unique() { return true; }
     bool operator()(const myclass& a, const myclass& b) const
     {
@@ -91,19 +92,13 @@ public:
     }
 };
 
-template <typename T, typename... Indices>
-struct index_helper {
-    using value_type = T;
-    using index_types = std::tuple<Indices...>;
-};
-
-
-using indices = index_helper<myclass, hash_myclass, hash_myclass_unique, compare_myclass_less, compare_myclass_greater>;
-
 int main()
 {
-    tmi::tmi<myclass, indices, std::allocator<myclass>> bar;
-    auto& hash_index = bar.get<hash_nonunique>();
+    tmi::tmi<myclass,tmi::indexed_by<tmi::hashed_unique<tmi::tag<hash_unique>, hash_myclass_unique, hash_myclass_unique, hash_myclass_unique>,
+                     tmi::ordered_unique<tmi::tag<comp_less>, tmi::identity<myclass>, compare_myclass_less>,
+                     tmi::ordered_unique<tmi::tag<comp_greater>, tmi::identity<myclass>, compare_myclass_greater>>,
+                     std::allocator<myclass>> bar;
+    auto& hash_index = bar.get<hash_unique>();
     bar.emplace(0UL);
     for (unsigned i = 1; i <= 10; i++) {
         hash_index.emplace(i);

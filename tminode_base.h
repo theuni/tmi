@@ -9,6 +9,9 @@
 
 namespace tmi {
 
+struct hashed_type;
+struct ordered_type;
+
 template <typename T, typename Indices>
 class tminode;
 
@@ -44,8 +47,8 @@ struct tminode_base {
     template <int I>
     struct base_index_type_helper
     {
-        using value = typename std::tuple_element_t<I, index_types>::sorted;
-        using data_type = std::conditional_t<std::is_same_v<value, std::true_type>, rb, hash>;
+        using index_type = std::tuple_element_t<I, index_types>;
+        using data_type = std::conditional_t<std::is_base_of_v<hashed_type, index_type>, hash, rb>;
     };
 
     template <typename>

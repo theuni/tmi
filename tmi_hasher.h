@@ -22,8 +22,13 @@ class tmi_hasher
     using node_type = Node;
     using base_type = typename node_type::base_type;
     using hash_buckets = std::vector<base_type*>;
-    using hash_type = typename Hasher::hash_type;
+    using key_from_value_type = typename Hasher::key_from_value_type;
+    using hash_type = typename key_from_value_type::result_type;
+    using hasher_type = typename Hasher::hasher_type;
+    using pred_type = typename Hasher::pred_type;
     friend Parent;
+
+    static constexpr bool hashed_unique() { return Hasher::is_hashed_unique(); }
 
     struct insert_hints {
         size_t m_hash{0};
@@ -40,8 +45,10 @@ class tmi_hasher
     static constexpr size_t first_hashes_resize = 2048;
 
     Parent& m_parent;
-    Hasher m_hasher;
     hash_buckets m_buckets;
+    hasher_type m_hasher;
+    key_from_value_type m_key_from_value;
+    pred_type m_pred;
 
     tmi_hasher(Parent& parent) : m_parent(parent){}
 
@@ -122,7 +129,8 @@ class tmi_hasher
     node_type* preinsert_node(node_type* node, insert_hints& hints)
     {
         size_t bucket_count = m_buckets.size();
-        auto hash = m_hasher(node->value());
+        const auto& key = m_key_from_value(node->value());
+        auto hash = m_hasher(key);
 
         if (!bucket_count) {
             m_buckets.resize(first_hashes_resize, nullptr);
@@ -135,12 +143,12 @@ class tmi_hasher
         size_t index = hash % m_buckets.size();
         base_type*& bucket = m_buckets.at(index);
 
-        if constexpr (Hasher::hashed_unique()) {
+        if constexpr (hashed_unique()) {
             base_type* curr = bucket;
             base_type* prev = curr;
             while (curr) {
                 if (curr->template hash<I>() == hash) {
-                    if (m_hasher(curr->node()->value(), node->value())) {
+                    if (m_pred(m_key_from_value(curr->node()->value()), key)) {
                         return curr->node();
                     }
                 }
@@ -185,7 +193,7 @@ class tmi_hasher
     bool erase_if_modified(node_type* node, const premodify_cache& cache)
     {
         base_type* base = node->get_base();
-        if (m_hasher(node->value()) != base->template hash<I>()) {
+        if (m_hasher(m_key_from_value(node->value())) != base->template hash<I>()) {
             if (cache.m_prev) {
                 cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
             } else {
@@ -215,7 +223,7 @@ class tmi_hasher
         auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_hasher(node->node()->value(), hash_key)) {
+                if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
                     return node->node();
                 }
             }
@@ -351,7 +359,7 @@ public:
         auto* node = m_buckets.at(bucket);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_hasher(node->node()->value(), hash_key)) {
+                if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
                     return iterator(node->node(), &m_buckets);
                 }
             }
@@ -362,7 +370,8 @@ public:
 
     iterator find(const T& value) const
     {
-        size_t hash = m_hasher(value);
+        const auto& key = m_key_from_value(value);
+        size_t hash = m_hasher(key);
         size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
             return iterator(nullptr, &m_buckets);
@@ -371,7 +380,7 @@ public:
         auto* node = m_buckets.at(bucket);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_hasher(node->node()->value(), value)) {
+                if (m_pred(m_key_from_value(node->node()->value()), key)) {
                     return iterator(node->node(), &m_buckets);
                 }
             }
@@ -399,7 +408,8 @@ public:
     size_t count(const T& value) const
     {
         size_t ret = 0;
-        size_t hash = m_hasher(value);
+        const auto& key = m_key_from_value(value);
+        size_t hash = m_hasher(key);
         size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
             return 0;
@@ -408,9 +418,9 @@ public:
         auto* node = m_buckets.at(bucket);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_hasher(node->node()->value(), value)) {
+                if (m_pred(m_key_from_value(node->node()->value()), key)) {
                     ret++;
-                    if constexpr (Hasher::hashed_unique()) break;
+                    if constexpr (hashed_unique()) break;
                 }
             }
             node = node->template next_hash<I>();
@@ -430,9 +440,9 @@ public:
         auto* node = m_buckets.at(bucket);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_hasher(node->node()->value(), hash_key)) {
+                if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
                     ret++;
-                    if constexpr (Hasher::hashed_unique()) break;
+                    if constexpr (hashed_unique()) break;
                 }
             }
             node = node->template next_hash<I>();
