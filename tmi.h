@@ -45,8 +45,6 @@ public:
     using inherited_index = typename detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, 0>::type;
     static constexpr size_t num_indices = std::tuple_size<index_types>();
 
-    struct null_index_type{};
-
     template <int I>
     struct nth_index
     {
@@ -72,12 +70,12 @@ public:
     struct index_tuple_helper;
     template <size_t First, size_t... ints>
     struct index_tuple_helper<std::index_sequence<First, ints...>> {
-        using index_types = std::tuple<null_index_type, typename nth_index<ints>::type ...>;
+        using index_types = std::tuple<inherited_index&, typename nth_index<ints>::type ...>;
         using hints_types =  std::tuple<typename nth_index<First>::type::insert_hints, typename nth_index<ints>::type::insert_hints ...>;
         using premodify_cache_types = std::tuple<typename nth_index<First>::type::premodify_cache, typename nth_index<ints>::type::premodify_cache ...>;
 
         static index_types make_index_types(parent_type& parent) {
-            return std::make_tuple(null_index_type(), typename nth_index<ints>::type(parent) ...);
+            return std::make_tuple(std::ref(parent), typename nth_index<ints>::type(parent) ...);
         }
     };
 
@@ -131,21 +129,13 @@ private:
     template <int I>
     const typename nth_index<I>::type& get_index_instance() const noexcept
     {
-        if constexpr(I == 0) {
-            return(*static_cast<const inherited_index*>(this));
-        } else {
-            return std::get<I>(m_index_instances);
-        }
+        return std::get<I>(m_index_instances);
     }
 
     template <int I>
     typename nth_index<I>::type& get_index_instance() noexcept
     {
-        if constexpr(I == 0) {
-            return(*static_cast<inherited_index*>(this));
-        } else {
-            return std::get<I>(m_index_instances);
-        }
+        return std::get<I>(m_index_instances);
     }
 
     node_type* do_insert(node_type* node)
