@@ -31,7 +31,6 @@ class tmi_hasher
     };
 
     struct premodify_cache {
-        bool m_is_head{false};
         base_type** m_bucket{nullptr};
         base_type* m_prev{nullptr};
     };
@@ -170,11 +169,11 @@ class tmi_hasher
         while (cur_node) {
             if (cur_node->node() == node) {
                 if (cur_node == prev_node) {
+                    cache.m_prev = nullptr;
                     cache.m_bucket = &bucket;
-                    cache.m_is_head = true;
                 } else {
                     cache.m_prev = prev_node;
-                    cache.m_is_head = false;
+                    cache.m_bucket = nullptr;
                 }
                 break;
             }
@@ -187,10 +186,10 @@ class tmi_hasher
     {
         base_type* base = node->get_base();
         if (m_hasher(node->value()) != base->template hash<I>()) {
-            if (cache.m_is_head) {
-                *cache.m_bucket = nullptr;
-            } else {
+            if (cache.m_prev) {
                 cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
+            } else {
+                *cache.m_bucket = base->template next_hash<I>();
             }
             return true;
         }
