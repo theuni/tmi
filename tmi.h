@@ -215,10 +215,6 @@ private:
     template <typename Callable>
     bool do_modify(node_type* node, Callable&& func)
     {
-        struct modify_actions {
-            bool m_do_reinsert{false};
-        };
-
         indices_premodify_cache_tuple index_cache;
 
         foreach_index([this]<int I>(node_type* node, auto& cache) {
