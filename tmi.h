@@ -129,7 +129,7 @@ private:
     }
 
     template <int I>
-    const auto& get_index_instance() const noexcept
+    const typename nth_index<I>::type& get_index_instance() const noexcept
     {
         if constexpr(I == 0) {
             return(*static_cast<const inherited_index*>(this));
@@ -139,7 +139,7 @@ private:
     }
 
     template <int I>
-    auto& get_index_instance() noexcept
+    typename nth_index<I>::type& get_index_instance() noexcept
     {
         if constexpr(I == 0) {
             return(*static_cast<inherited_index*>(this));
