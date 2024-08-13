@@ -155,14 +155,14 @@ private:
         bool can_insert;
         node_type* conflict = nullptr;
         can_insert = get_foreach_index([this, &conflict]<int I>(node_type* node, auto& hints) {
-            conflict = get_index_instance<I>().preinsert_node(node, hints);
+            conflict = this->get_index_instance<I>().preinsert_node(node, hints);
             return conflict == nullptr;
         }, node, hints);
 
         if (!can_insert) return conflict;
 
         foreach_index([this]<int I>(node_type* node, const auto& hints) {
-            get_index_instance<I>().insert_node(node, hints);
+            this->get_index_instance<I>().insert_node(node, hints);
         }, node, hints);
 
         if (m_begin == nullptr) {
@@ -207,7 +207,7 @@ private:
     void do_erase(node_type* node)
     {
         foreach_index([this]<int I>(node_type* node) {
-            get_index_instance<I>().remove_node(node);
+            this->get_index_instance<I>().remove_node(node);
         }, node);
         do_erase_cleanup(node);
     }
@@ -219,7 +219,7 @@ private:
 
         foreach_index([this]<int I>(node_type* node, auto& cache) {
             if constexpr (nth_index<I>::type::requires_premodify_cache()) {
-                get_index_instance<I>().create_premodify_cache(node, cache);
+                this->get_index_instance<I>().create_premodify_cache(node, cache);
             }
         }, node, index_cache);
 
@@ -229,25 +229,25 @@ private:
         std::array<bool, num_indices> indicies_to_modify{};
 
         foreach_index([this]<int I>(node_type* node, auto& modify, const auto& cache) {
-            modify = get_index_instance<I>().erase_if_modified(node, cache);
+            modify = this->get_index_instance<I>().erase_if_modified(node, cache);
          }, node, indicies_to_modify, index_cache);
 
 
         indices_hints_tuple index_hints;
 
         bool insertable = get_foreach_index([this]<int I>(node_type* node, const auto& modify, auto& hints) {
-            if (modify) return get_index_instance<I>().preinsert_node(node, hints) == nullptr;
+            if (modify) return this->get_index_instance<I>().preinsert_node(node, hints) == nullptr;
             return true;
         }, node, indicies_to_modify, index_hints);
 
         if (insertable) {
             foreach_index([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
-                if (modify) get_index_instance<I>().insert_node(node, hints);
+                if (modify) this->get_index_instance<I>().insert_node(node, hints);
             }, node, indicies_to_modify, index_hints);
             return true;
         } else {
             foreach_index([this]<int I>(node_type* node, const auto& modify) {
-                if (!modify) get_index_instance<I>().remove_node(node);
+                if (!modify) this->get_index_instance<I>().remove_node(node);
             }, node, indicies_to_modify);
             do_erase_cleanup(node);
             return false;
@@ -257,7 +257,7 @@ private:
     void do_clear()
     {
         foreach_index([this]<int I>(std::nullptr_t) {
-            get_index_instance<I>().do_clear();
+            this->get_index_instance<I>().do_clear();
          }, nullptr);
 
         auto* node = m_begin;
