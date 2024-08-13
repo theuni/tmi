@@ -161,7 +161,7 @@ private:
 
         if (!can_insert) return conflict;
 
-        foreach_index([this]<int I>(node_type* node, auto& hints) {
+        foreach_index([this]<int I>(node_type* node, const auto& hints) {
             get_index_instance<I>().insert_node(node, hints);
         }, node, hints);
 
