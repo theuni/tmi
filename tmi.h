@@ -244,16 +244,18 @@ private:
             return true;
         }, node, indicies_to_modify, index_hints);
 
-        if (!insertable) {
+        if (insertable) {
+            foreach_index([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
+                if (modify) get_index_instance<I>().insert_node(node, hints);
+            }, node, indicies_to_modify, index_hints);
+            return true;
+        } else {
+            foreach_index([this]<int I>(node_type* node, const auto& modify) {
+                if (!modify) get_index_instance<I>().remove_node(node);
+            }, node, indicies_to_modify);
             do_erase_cleanup(node);
             return false;
         }
-
-        foreach_index([this]<int I>(node_type* node, const auto& modify, const auto& hints) {
-            if (modify) get_index_instance<I>().insert_node(node, hints);
-        }, node, indicies_to_modify, index_hints);
-
-        return true;
     }
 
     void do_clear()
