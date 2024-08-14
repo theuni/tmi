@@ -33,7 +33,7 @@ struct index_type_helper
 
 } // namespace detail
 
-template <typename T, typename Indices, typename Allocator = std::allocator<T>>
+template <typename T, typename Indices = indexed_by<ordered_unique<identity<T>>>, typename Allocator = std::allocator<T>>
 class tmi : public detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, 0>::type
 {
 public:
@@ -109,9 +109,7 @@ private:
     template <int I = 0, class Callable, typename Node, typename... Args>
     static void foreach_index(Callable&& func, Node node, Args&&... args)
     {
-        if constexpr (num_indices) {
-            func.template operator()<I>(node, std::get<I>(args)...);
-        }
+        func.template operator()<I>(node, std::get<I>(args)...);
         if constexpr (I + 1 < num_indices) {
             foreach_index<I + 1>(std::forward<Callable>(func), node, std::forward<Args>(args)...);
         }
@@ -120,15 +118,14 @@ private:
     template <int I = 0, class Callable, typename Node, typename... Args>
     static bool get_foreach_index(Callable&& func, Node node, Args&&... args)
     {
-        if constexpr (num_indices) {
-            if (!func.template operator()<I>(node, std::get<I>(args)...)) {
-                return false;
-            }
+        if (!func.template operator()<I>(node, std::get<I>(args)...)) {
+            return false;
         }
-        if constexpr (I + 1 < num_indices) {
+        else if constexpr (I + 1 < num_indices) {
             return get_foreach_index<I + 1>(std::forward<Callable>(func), node, std::forward<Args>(args)...);
+        } else {
+            return true;
         }
-        return true;
     }
 
     template <int I>
