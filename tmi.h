@@ -196,6 +196,19 @@ private:
         return std::make_pair(node, true);
     }
 
+    std::pair<node_type*, bool> do_insert(const T& entry)
+    {
+        node_type* node = m_alloc.allocate(1);
+        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, entry);
+        node_type* conflict = do_insert(node);
+        if (conflict != nullptr) {
+            std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
+            std::allocator_traits<node_allocator_type>::deallocate(m_alloc, node, 1);
+            return std::make_pair(conflict, false);
+        }
+        return std::make_pair(node, true);
+    }
+
     void do_erase(node_type* node)
     {
         foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance) {

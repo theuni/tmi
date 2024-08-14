@@ -27,7 +27,7 @@ class tmi_comparator
     using Color = typename base_type::Color;
     using key_from_value_type = typename Comparator::key_from_value_type;
     using comparator_type = typename Comparator::comparator;
-
+    using key_type = typename Comparator::key_from_value_type::result_type;
     static constexpr bool sorted_unique() { return Comparator::is_ordered_unique(); }
     friend Parent;
 
@@ -634,6 +634,12 @@ public:
         return std::make_pair(iterator(node), success);
     }
 
+    std::pair<iterator,bool> insert(const T& value)
+    {
+        auto [node, success] = m_parent.do_insert(value);
+        return std::make_pair(iterator(node), success);
+    }
+
     iterator begin() const
     {
         base_type* root = get_root_base();
@@ -658,16 +664,16 @@ public:
     template <typename Callable>
     bool modify(iterator it, Callable&& func)
     {
-        node_type* node = it.m_node;
+        node_type* node = const_cast<node_type*>(it.m_node);
         if (!node) return false;
         return m_parent.do_modify(node, std::forward<Callable>(func));
     }
 
-    iterator find(const T& value) const
+    template<typename CompatibleKey>
+    iterator find(const CompatibleKey& key) const
     {
         base_type* parent = nullptr;
         base_type* curr = get_root_base();
-        const auto& key = m_key_from_value(value);
         while (curr != nullptr) {
             parent = curr;
             const auto& curr_key = m_key_from_value(curr->node()->value());
@@ -682,13 +688,109 @@ public:
         return end();
     }
 
+    template<typename CompatibleKey>
+    size_t count(const CompatibleKey& key) const
+    {
+        base_type* parent = nullptr;
+        base_type* curr = get_root_base();
+        size_t ret = 0;
+        while (curr != nullptr) {
+            parent = curr;
+            const auto& curr_key = m_key_from_value(curr->node()->value());
+            if (m_comparator(key, curr_key)) {
+                curr = curr->template left<I>();
+            } else if (m_comparator(curr_key, key)) {
+                curr = curr->template right<I>();
+            } else {
+                ret++;
+                break;
+            }
+        }
+        if constexpr (sorted_unique()) return ret;
+
+        base_type* found_match = curr;
+        if (found_match) {
+            curr = tree_prev(found_match);
+            while (curr != nullptr)
+            {
+                const auto& curr_key = m_key_from_value(curr->node()->value());
+                if (!m_comparator(curr_key, key)) {
+                    break;
+                }
+                ret++;
+                curr = tree_prev(curr);
+            }
+            curr = tree_next(found_match);
+            while (curr != nullptr)
+            {
+                const auto& curr_key = m_key_from_value(curr->node()->value());
+                if (!m_comparator(curr_key, key)) {
+                    break;
+                }
+                ret++;
+                curr = tree_next(curr);
+            }
+        }
+        return ret;
+    }
+
     iterator erase(iterator it)
     {
-        node_type* node = it.m_node;
+        node_type* node = const_cast<node_type*>(it.m_node);
         if (!node) return iterator(nullptr);
         node = tree_next(node->get_base())->node();
         iterator ret(node);
         m_parent.do_erase(node);
+        return ret;
+    }
+
+    size_t erase(const key_type& key) const
+    {
+        base_type* parent = nullptr;
+        base_type* curr = get_root_base();
+        size_t ret = 0;
+        while (curr != nullptr) {
+            parent = curr;
+            const auto& curr_key = m_key_from_value(curr->node()->value());
+            if (m_comparator(key, curr_key)) {
+                curr = curr->template left<I>();
+            } else if (m_comparator(curr_key, key)) {
+                curr = curr->template right<I>();
+            } else {
+                ret++;
+                break;
+            }
+        }
+        base_type* found_match = curr;
+        if (found_match) {
+            if constexpr (!sorted_unique()) {
+                curr = tree_prev(found_match);
+                while (curr != nullptr)
+                {
+                    const auto& curr_key = m_key_from_value(curr->node()->value());
+                    if (!m_comparator(curr_key, key)) {
+                        break;
+                    }
+                    ret++;
+                    base_type* to_erase = curr;
+                    curr = tree_prev(curr);
+                    m_parent.do_erase(to_erase->node());
+                }
+                curr = tree_next(found_match);
+                while (curr != nullptr)
+                {
+                    const auto& curr_key = m_key_from_value(curr->node()->value());
+                    if (!m_comparator(curr_key, key)) {
+                        break;
+                    }
+                    ret++;
+                    base_type* to_erase = curr;
+                    curr = tree_next(curr);
+                    m_parent.do_erase(to_erase->node());
+                }
+            }
+            m_parent.do_erase(found_match->node());
+        }
         return ret;
     }
 

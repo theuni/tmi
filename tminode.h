@@ -22,7 +22,7 @@ public:
         m_base = {};
     }
 
-    explicit tminode(tminode* prev, T elem) : m_prev(prev), m_value(std::move(elem))
+    explicit tminode(tminode* prev, const T& elem) : m_value(elem), m_prev(prev)
     {
         if (m_prev) m_prev->m_next = this;
         m_base.m_node = this;
