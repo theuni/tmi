@@ -34,21 +34,21 @@ struct index_type_helper
 } // namespace detail
 
 template <typename T, typename Indices = indexed_by<ordered_unique<identity<T>>>, typename Allocator = std::allocator<T>>
-class tmi : public detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, 0>::type
+class tmi_container : public detail::index_type_helper<T, Indices, Allocator, tmi_container<T, Indices, Allocator>, 0>::type
 {
 public:
-    using parent_type = tmi<T, Indices, Allocator>;
+    using parent_type = tmi_container<T, Indices, Allocator>;
     using allocator_type = Allocator;
     using index_types = typename Indices::index_types;
     using node_type = tminode<T, Indices>;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
-    using inherited_index = typename detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, 0>::type;
+    using inherited_index = typename detail::index_type_helper<T, Indices, Allocator, tmi_container<T, Indices, Allocator>, 0>::type;
     static constexpr size_t num_indices = std::tuple_size<index_types>();
 
     template <int I>
     struct nth_index
     {
-        using type = typename detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, I>::type;
+        using type = typename detail::index_type_helper<T, Indices, Allocator, tmi_container<T, Indices, Allocator>, I>::type;
     };
 
     template <typename Tag>
@@ -274,14 +274,14 @@ private:
 
 public:
 
-    tmi(const allocator_type& alloc = {})
+    tmi_container(const allocator_type& alloc = {})
         : inherited_index(*this),
           m_index_instances(index_tuple_helper<std::make_index_sequence<num_indices>>::make_index_types(*this)),
           m_alloc(alloc)
     {
     }
 
-    ~tmi()
+    ~tmi_container()
     {
         do_clear();
     }
