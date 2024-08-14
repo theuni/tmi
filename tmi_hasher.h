@@ -52,6 +52,9 @@ class tmi_hasher
 
     tmi_hasher(Parent& parent) : m_parent(parent){}
 
+    template <typename K, typename H, typename P>
+    tmi_hasher(Parent& parent, K&& keyval, H&& hasher, P&& pred) : m_parent(parent), m_key_from_value(std::forward<K>(keyval)), m_hasher(std::forward<H>(hasher)), m_pred(std::forward<P>(pred)) {}
+
     static base_type* get_next_hash(base_type* base)
     {
         return base->template next_hash<I>();

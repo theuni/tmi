@@ -42,11 +42,16 @@ class tmi_comparator
     Parent& m_parent;
 
     base_type m_roots;
-    comparator_type m_comparator;
     key_from_value_type m_key_from_value;
+    comparator_type m_comparator;
 
     tmi_comparator(Parent& parent) : m_parent(parent){}
 
+//TODO: figure out the friend syntax here
+public:
+    template <typename K, typename C>
+    tmi_comparator(Parent& parent, K&& keyval, C&& comparator) : m_parent(parent), m_key_from_value(std::forward<K>(keyval)), m_comparator(std::forward<C>(comparator)) {}
+private:
     base_type* get_root_base() const
     {
         return m_roots.template left<I>();
