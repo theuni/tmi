@@ -1,6 +1,8 @@
 #ifndef TMINODE_BASE_H
 #define TMINODE_BASE_H
 
+#include "tmi_index.h"
+
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -8,13 +10,6 @@
 #include <tuple>
 
 namespace tmi {
-
-namespace detail {
-
-struct hashed_type;
-struct ordered_type;
-
-} // namespace detail
 
 template <typename T, typename Indices>
 class tminode;
