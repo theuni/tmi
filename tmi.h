@@ -263,7 +263,7 @@ private:
     {
         foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance) {
             instance.remove_node(node);
-        }, node);
+        }, node, m_index_instances);
         do_erase_cleanup(node);
     }
 
