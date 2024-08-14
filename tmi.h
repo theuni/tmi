@@ -17,68 +17,50 @@
 #include <vector>
 
 namespace tmi {
+namespace detail {
 
 struct hashed_type{};
 struct ordered_type{};
+struct tag_type{};
 
-template<typename... Tags>
-struct tag
+struct tag_dummy : tag_type
 {
-   using type = std::tuple<Tags...>;
+    struct empty{};
+    using type = std::tuple<empty>;
 };
 
-template <typename Value>
-struct identity
+template < typename Arg1, typename Arg2, typename Arg3, typename Arg4>
+struct hashed_args
 {
-    using result_type = Value;
-    const Value& operator()(const Value& val) { return val; }
+    static constexpr bool using_tags = std::is_base_of_v<tag_type, Arg1>;
+    using tags_arg = std::conditional_t<using_tags, Arg1, tag_dummy>;
+    using key_from_value_type = std::conditional_t<using_tags, Arg2, Arg1>;
+    static_assert(!std::is_same_v<key_from_value_type, void>);
+    using hasher_arg = std::conditional_t<using_tags, Arg3, Arg2>;
+    using pred_arg = std::conditional_t<using_tags, Arg4, Arg3>;
+
+    using default_hasher = std::hash<typename key_from_value_type::result_type>;
+    using default_pred = std::equal_to<typename key_from_value_type::result_type>;
+
+    using hasher_type = std::conditional_t<std::is_same_v<hasher_arg, void>, default_hasher, hasher_arg>;
+    using pred_type = std::conditional_t<std::is_same_v<pred_arg, void>, default_pred, pred_arg>;
+    using tags = typename tags_arg::type;
 };
 
-template <typename TagList, typename KeyFromValue, typename Hash=std::hash<typename KeyFromValue::result_type>, typename Pred=std::equal_to<typename KeyFromValue::result_type>>
-struct hashed_unique : hashed_type
+template<typename Arg1, typename Arg2, typename Arg3>
+struct ordered_args
 {
-    using tags = typename TagList::type;
-    using key_from_value_type = KeyFromValue;
-    using hasher_type = Hash;
-    using pred_type = Pred;
-    static constexpr bool is_hashed_unique() { return true; }
-};
+    static constexpr bool using_tags = std::is_base_of_v<tag_type, Arg1>;
+    using tags_arg = std::conditional_t<using_tags, Arg1, tag_dummy>;
+    using key_from_value_type = std::conditional_t<using_tags, Arg2, Arg1>;
+    static_assert(!std::is_same_v<key_from_value_type, void>);
+    using comparator_arg = std::conditional_t<using_tags, Arg3, Arg2>;
 
-template <typename TagList, typename KeyFromValue, typename Hash=std::hash<typename KeyFromValue::result_type>, typename Pred=std::equal_to<typename KeyFromValue::result_type>>
-struct hashed_non_unique : hashed_type
-{
-    using tags = typename TagList::type;
-    using key_from_value_type = KeyFromValue;
-    using hasher_type = Hash;
-    using pred_type = Pred;
-    static constexpr bool is_hashed_unique() { return false; }
-};
+    using default_comparator = std::less<typename key_from_value_type::result_type>;
 
-template<typename TagList, typename KeyFromValue, typename Compare=std::less<typename KeyFromValue::result_type>>
-struct ordered_unique
-{
-    using tags = typename TagList::type;
-    using key_from_value_type = KeyFromValue;
-    using comparator = Compare;
-    static constexpr bool is_ordered_unique() { return true; }
+    using comparator = std::conditional_t<std::is_same_v<comparator_arg, void>, default_comparator, comparator_arg>;
+    using tags = typename tags_arg::type;
 };
-
-template<typename TagList, typename KeyFromValue, typename Compare=std::less<typename KeyFromValue::result_type>>
-struct ordered_non_unique
-{
-    using tags = typename TagList::type;
-    using key_from_value_type = KeyFromValue;
-    using comparator = Compare;
-    static constexpr bool is_ordered_unique() { return false; }
-};
-
-template<typename... Indices>
-struct indexed_by
-{
-   using index_types = std::tuple<Indices...>;
-};
-
-namespace detail {
 
 template <typename T, typename Indices, typename Allocator, typename Parent, int I>
 struct index_type_helper
@@ -91,7 +73,50 @@ struct index_type_helper
     using type = std::conditional_t<std::is_base_of_v<hashed_type, index_type>, hasher, comparator>;
 };
 
-}
+} // namespace detail
+
+template<typename... Tags>
+struct tag : detail::tag_type
+{
+   using type = std::tuple<Tags...>;
+};
+
+template <typename Value>
+struct identity
+{
+    using result_type = Value;
+    const Value& operator()(const Value& val) { return val; }
+};
+
+template < typename Arg1, typename Arg2=void, typename Arg3=void, typename Arg4=void>
+struct hashed_unique : detail::hashed_type, public detail::hashed_args<Arg1, Arg2, Arg3, Arg4>
+{
+    static constexpr bool is_hashed_unique() { return true; }
+};
+
+template < typename Arg1, typename Arg2=void, typename Arg3=void, typename Arg4=void>
+struct hashed_non_unique : detail::hashed_type, public detail::hashed_args<Arg1, Arg2, Arg3, Arg4>
+{
+    static constexpr bool is_hashed_unique() { return false; }
+};
+
+template<typename Arg1, typename Arg2 = void, typename Arg3 = void>
+struct ordered_unique : detail::ordered_type, public detail::ordered_args<Arg1, Arg2, Arg3>
+{
+    static constexpr bool is_ordered_unique() { return true; }
+};
+
+template<typename Arg1, typename Arg2 = void, typename Arg3 = void>
+struct ordered_non_unique : detail::ordered_type, public detail::ordered_args<Arg1, Arg2, Arg3>
+{
+    static constexpr bool is_ordered_unique() { return false; }
+};
+
+template<typename... Indices>
+struct indexed_by
+{
+   using index_types = std::tuple<Indices...>;
+};
 
 template <typename T, typename Indices, typename Allocator = std::allocator<T>>
 class tmi : public detail::index_type_helper<T, Indices, Allocator, tmi<T, Indices, Allocator>, 0>::type
