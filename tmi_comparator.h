@@ -596,6 +596,8 @@ public:
         typedef const T value_type;
         typedef const T* pointer;
         typedef const T& reference;
+        typedef size_t difference_type;
+        using iterator_category = std::bidirectional_iterator_tag;
         using element_type = const T;
         const_iterator() = default;
         const T& operator*() const { return m_node->value(); }
@@ -811,7 +813,7 @@ public:
 
 private:
 
-    iterator make_iterator(node_type* node) const
+    iterator make_iterator(const node_type* node) const
     {
         if (node) {
             return iterator(node);
