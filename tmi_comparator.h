@@ -721,7 +721,7 @@ public:
             while (curr != nullptr)
             {
                 const auto& curr_key = m_key_from_value(curr->node()->value());
-                if (!m_comparator(curr_key, key)) {
+                if (m_comparator(curr_key, key)) {
                     break;
                 }
                 ret++;
@@ -731,7 +731,7 @@ public:
             while (curr != nullptr)
             {
                 const auto& curr_key = m_key_from_value(curr->node()->value());
-                if (!m_comparator(curr_key, key)) {
+                if (m_comparator(key, curr_key)) {
                     break;
                 }
                 ret++;
@@ -775,7 +775,7 @@ public:
                 while (curr != nullptr)
                 {
                     const auto& curr_key = m_key_from_value(curr->node()->value());
-                    if (!m_comparator(curr_key, key)) {
+                    if (m_comparator(curr_key, key)) {
                         break;
                     }
                     ret++;
@@ -787,7 +787,7 @@ public:
                 while (curr != nullptr)
                 {
                     const auto& curr_key = m_key_from_value(curr->node()->value());
-                    if (!m_comparator(curr_key, key)) {
+                    if (m_comparator(key, curr_key)) {
                         break;
                     }
                     ret++;
