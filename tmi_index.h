@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <tuple>
+#include <type_traits>
 
 #if __cplusplus >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L
 #define TMI_CPP23_STATIC static

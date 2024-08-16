@@ -5,13 +5,12 @@
 #ifndef TMI_HASHER_H_
 #define TMI_HASHER_H_
 
-#include "tminode.h"
-
 #include <algorithm>
-#include <array>
 #include <cassert>
-#include <memory>
+#include <cstddef>
+#include <iterator>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace tmi {

@@ -8,6 +8,8 @@
 #include <limits>
 #include <cstdlib>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace tmi {
 

@@ -10,12 +10,13 @@
 #include "tmi_hasher.h"
 #include "tmi_index.h"
 
-#include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstddef>
 #include <memory>
 #include <tuple>
-#include <vector>
+#include <type_traits>
+#include <utility>
 
 namespace tmi {
 namespace detail {

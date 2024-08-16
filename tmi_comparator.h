@@ -10,11 +10,10 @@
 #ifndef TMI_COMPARATOR_H_
 #define TMI_COMPARATOR_H_
 
-#include "tminode.h"
-
-#include <algorithm>
 #include <cassert>
-#include <memory>
+#include <cstddef>
+#include <iterator>
+#include <utility>
 #include <tuple>
 
 namespace tmi {
