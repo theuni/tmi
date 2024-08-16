@@ -81,7 +81,7 @@ public:
 
         template <typename Args>
         static index_types make_index_types(parent_type& parent, Args&& args) {
-            return std::make_tuple(std::ref(parent), std::make_from_tuple<typename nth_index<ints>::type>(std::tuple_cat(std::make_tuple(std::ref(parent)), std::get<ints>(std::forward<Args>(args)))) ...);
+            return std::make_tuple(std::ref(parent), typename nth_index<ints>::type(parent, std::get<ints>(std::forward<Args>(args))) ...);
         }
         static index_types make_index_types(parent_type& parent) {
             return std::make_tuple(std::ref(parent), typename nth_index<ints>::type(parent) ...);
@@ -300,7 +300,7 @@ public:
 
     template<typename Args>
     multi_index_container(Args&& index_ctor_args, const allocator_type& alloc = {})
-        : inherited_index(std::make_from_tuple<inherited_index>(std::tuple_cat(std::make_tuple(std::ref(*this)), std::get<0>(std::forward<Args>(index_ctor_args))))),
+        : inherited_index(*this, std::get<0>(std::forward<Args>(index_ctor_args))),
           m_index_instances(index_tuple_helper<std::make_index_sequence<num_indices>>::make_index_types(*this, std::forward<Args>(index_ctor_args))),
           m_alloc(alloc)
     {

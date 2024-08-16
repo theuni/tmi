@@ -52,11 +52,9 @@ class tmi_hasher
 
     tmi_hasher(Parent& parent) : m_parent(parent){}
 
-    public:
-    //TODO figure out friend syntax here
-    template <typename K, typename H, typename P>
-    tmi_hasher(Parent& parent, K&& keyval, H&& hasher, P&& pred) : m_parent(parent), m_key_from_value(std::forward<K>(keyval)), m_hasher(std::forward<H>(hasher)), m_pred(std::forward<P>(pred)) {}
-    private:
+    template <typename TupleArgs>
+    tmi_hasher(Parent& parent, TupleArgs&& args) : m_parent(parent), m_key_from_value(std::get<0>(std::forward<TupleArgs>(args))),  m_hasher(std::get<1>(std::forward<TupleArgs>(args))),  m_pred(std::get<2>(std::forward<TupleArgs>(args))){}
+
 
     static base_type* get_next_hash(base_type* base)
     {

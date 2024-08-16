@@ -47,11 +47,9 @@ class tmi_comparator
 
     tmi_comparator(Parent& parent) : m_parent(parent){}
 
-//TODO: figure out the friend syntax here
-public:
-    template <typename K, typename C>
-    tmi_comparator(Parent& parent, K&& keyval, C&& comparator) : m_parent(parent), m_key_from_value(std::forward<K>(keyval)), m_comparator(std::forward<C>(comparator)) {}
-private:
+    template <typename TupleArgs>
+    tmi_comparator(Parent& parent, TupleArgs&& args) : m_parent(parent), m_key_from_value(std::get<0>(std::forward<TupleArgs>(args))), m_comparator(std::get<1>(std::forward<TupleArgs>(args))){}
+
     base_type* get_root_base() const
     {
         return m_roots.template left<I>();
