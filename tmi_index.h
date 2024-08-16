@@ -66,7 +66,7 @@ template <typename Value>
 struct identity
 {
     using result_type = Value;
-    const Value& operator()(const Value& val) { return val; }
+    constexpr const Value& operator()(const Value& val) { return val; }
 };
 
 template < typename Arg1, typename Arg2=void, typename Arg3=void, typename Arg4=void>
