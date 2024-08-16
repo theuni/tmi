@@ -600,7 +600,7 @@ public:
         typedef const T value_type;
         typedef const T* pointer;
         typedef const T& reference;
-        typedef size_t difference_type;
+        typedef std::ptrdiff_t difference_type;
         using iterator_category = std::bidirectional_iterator_tag;
         using element_type = const T;
         const_iterator() = default;
