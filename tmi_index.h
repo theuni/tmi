@@ -8,6 +8,12 @@
 #include <functional>
 #include <tuple>
 
+#if __cplusplus >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L
+#define TMI_CPP23_STATIC static
+#else
+#define TMI_CPP23_STATIC
+#endif
+
 namespace tmi {
 namespace detail {
 
@@ -66,7 +72,7 @@ template <typename Value>
 struct identity
 {
     using result_type = Value;
-    constexpr const Value& operator()(const Value& val) { return val; }
+    TMI_CPP23_STATIC constexpr const Value& operator()(const Value& val) { return val; }
 };
 
 template < typename Arg1, typename Arg2=void, typename Arg3=void, typename Arg4=void>

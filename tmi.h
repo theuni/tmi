@@ -157,7 +157,7 @@ private:
 
         if (!can_insert) return conflict;
 
-        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& hints) {
+        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& hints) TMI_CPP23_STATIC {
             instance.insert_node(node, hints);
         }, node, m_index_instances,  hints);
 
@@ -215,7 +215,7 @@ private:
 
     void do_erase(node_type* node)
     {
-        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance) {
+        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance) TMI_CPP23_STATIC {
             instance.remove_node(node);
         }, node, m_index_instances);
         do_erase_cleanup(node);
@@ -226,7 +226,7 @@ private:
     {
         indices_premodify_cache_tuple index_cache;
 
-        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& cache) {
+        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& cache) TMI_CPP23_STATIC {
             if constexpr (nth_index<I>::type::requires_premodify_cache()) {
                 instance.create_premodify_cache(node, cache);
             }
@@ -237,25 +237,25 @@ private:
 
         std::array<bool, num_indices> indicies_to_modify{};
 
-        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& modify, const auto& cache) {
+        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& modify, const auto& cache) TMI_CPP23_STATIC {
             modify = instance.erase_if_modified(node, cache);
          }, node, m_index_instances,  indicies_to_modify, index_cache);
 
 
         indices_hints_tuple index_hints;
 
-        bool insertable = get_foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify, auto& hints) {
+        bool insertable = get_foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify, auto& hints) TMI_CPP23_STATIC {
             if (modify) return instance.preinsert_node(node, hints) == nullptr;
             return true;
         }, node, m_index_instances,  indicies_to_modify, index_hints);
 
         if (insertable) {
-            foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify, const auto& hints) {
+            foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify, const auto& hints) TMI_CPP23_STATIC {
                 if (modify) instance.insert_node(node, hints);
             }, node, m_index_instances,  indicies_to_modify, index_hints);
             return true;
         } else {
-            foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify) {
+            foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify) TMI_CPP23_STATIC {
                 if (!modify) instance.remove_node(node);
             }, node, m_index_instances,  indicies_to_modify);
             do_erase_cleanup(node);
@@ -265,7 +265,7 @@ private:
 
     void do_clear()
     {
-        foreach_index([]<int I>(std::nullptr_t, typename nth_index<I>::type& instance) {
+        foreach_index([]<int I>(std::nullptr_t, typename nth_index<I>::type& instance) TMI_CPP23_STATIC {
             instance.do_clear();
          }, nullptr, m_index_instances);
 
