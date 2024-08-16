@@ -256,7 +256,9 @@ public:
         typedef const T value_type;
         typedef const T* pointer;
         typedef const T& reference;
+        using difference_type = std::ptrdiff_t;
         using element_type = const T;
+        using iterator_category = std::forward_iterator_tag;
         iterator() = default;
         const T& operator*() const { return m_node->value(); }
         const T* operator->() const { return &m_node->value(); }
