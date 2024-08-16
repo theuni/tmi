@@ -607,7 +607,12 @@ public:
         const T* operator->() const { return &m_node->value(); }
         const_iterator& operator++()
         {
-            m_node = tree_next(m_node->get_base())->node();
+            const base_type* next = tree_next(m_node->get_base());
+            if (next) {
+                m_node = next->node();
+            } else {
+                m_node = nullptr;
+            }
             return *this;
         }
         const_iterator& operator--()
@@ -707,7 +712,11 @@ public:
                 curr = curr->template right<I>();
             }
         }
-        return iterator(ret->node());
+        if (ret) {
+            return iterator(ret->node());
+        } else {
+            return end();
+        }
     }
 
     template<typename CompatibleKey>
@@ -724,7 +733,11 @@ public:
                 curr = curr->template right<I>();
             }
         }
-        return iterator(ret->node());
+        if (ret) {
+            return iterator(ret->node());
+        } else {
+            return end();
+        }
     }
 
     template<typename CompatibleKey>
@@ -776,11 +789,13 @@ public:
     iterator erase(iterator it)
     {
         node_type* node = const_cast<node_type*>(it.m_node);
-        if (!node) return iterator(nullptr);
-        node = tree_next(node->get_base())->node();
-        iterator ret(node);
+        base_type* next = tree_next(node->get_base());
         m_parent.do_erase(node);
-        return ret;
+        if (next) {
+            return iterator(next->node());
+        } else {
+            return end();
+        }
     }
 
     size_t erase(const key_type& key) const
