@@ -94,7 +94,7 @@ public:
 
 int main()
 {
-    tmi::tmi_container<myclass,tmi::indexed_by<tmi::hashed_unique<tmi::tag<hash_unique>, hash_myclass_unique, hash_myclass_unique, hash_myclass_unique>,
+    tmi::multi_index_container<myclass,tmi::indexed_by<tmi::hashed_unique<tmi::tag<hash_unique>, hash_myclass_unique, hash_myclass_unique, hash_myclass_unique>,
                      tmi::ordered_unique<tmi::tag<comp_less>, tmi::identity<myclass>, compare_myclass_less>,
                      tmi::ordered_unique<tmi::tag<comp_greater>, tmi::identity<myclass>, compare_myclass_greater>>,
                      std::allocator<myclass>> bar{std::make_tuple(std::make_tuple(hash_myclass_unique(), hash_myclass_unique(), hash_myclass_unique()), std::make_tuple(tmi::identity<myclass>(), compare_myclass_less()), std::make_tuple(tmi::identity<myclass>(), compare_myclass_greater()))};
