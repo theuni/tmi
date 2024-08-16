@@ -46,14 +46,17 @@ class tmi_hasher
 
     Parent& m_parent;
     hash_buckets m_buckets;
-    hasher_type m_hasher;
     key_from_value_type m_key_from_value;
+    hasher_type m_hasher;
     pred_type m_pred;
 
     tmi_hasher(Parent& parent) : m_parent(parent){}
 
+    public:
+    //TODO figure out friend syntax here
     template <typename K, typename H, typename P>
     tmi_hasher(Parent& parent, K&& keyval, H&& hasher, P&& pred) : m_parent(parent), m_key_from_value(std::forward<K>(keyval)), m_hasher(std::forward<H>(hasher)), m_pred(std::forward<P>(pred)) {}
+    private:
 
     static base_type* get_next_hash(base_type* base)
     {
