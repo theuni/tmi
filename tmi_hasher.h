@@ -97,9 +97,9 @@ class tmi_hasher
         m_buckets = std::move(new_buckets);
     }
 
-    void remove_node(node_type* node)
+    void remove_node(const node_type* node)
     {
-        base_type* base = node->get_base();
+        const base_type* base = node->get_base();
         auto hash = base->template hash<I>();
         size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
@@ -129,7 +129,7 @@ class tmi_hasher
         First rehash if necessary, using first_hashes_resize as the initial
         size if empty. Then find calculate the bucket and insert there.
     */
-    node_type* preinsert_node(node_type* node, insert_hints& hints)
+    node_type* preinsert_node(const node_type* node, insert_hints& hints)
     {
         size_t bucket_count = m_buckets.size();
         const auto& key = m_key_from_value(node->value());
@@ -164,9 +164,9 @@ class tmi_hasher
         return nullptr;
     }
 
-    void create_premodify_cache(node_type* node, premodify_cache& cache)
+    void create_premodify_cache(const node_type* node, premodify_cache& cache)
     {
-        base_type* base = node->get_base();
+        const base_type* base = node->get_base();
         auto hash = base->template hash<I>();
         size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
@@ -193,9 +193,9 @@ class tmi_hasher
         }
     }
 
-    bool erase_if_modified(node_type* node, const premodify_cache& cache)
+    bool erase_if_modified(const node_type* node, const premodify_cache& cache)
     {
-        base_type* base = node->get_base();
+        const base_type* base = node->get_base();
         if (m_hasher(m_key_from_value(node->value())) != base->template hash<I>()) {
             if (cache.m_prev) {
                 cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
