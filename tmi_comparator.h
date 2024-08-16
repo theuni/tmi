@@ -592,7 +592,8 @@ public:
     class const_iterator
     {
         const node_type* m_node{};
-        const_iterator(const node_type* node) : m_node(node) {}
+        const base_type* m_root{};
+        const_iterator(const node_type* node, const base_type* root) : m_node(node), m_root(root){}
         friend tmi_comparator;
         friend Parent;
     public:
@@ -617,18 +618,29 @@ public:
         }
         const_iterator& operator--()
         {
-            m_node = tree_prev(m_node->get_base())->node();
+            if (m_node) {
+                const base_type* prev = tree_prev(m_node->get_base());
+                if (prev) {
+                    m_node = prev->node();
+                } else {
+                    m_node = nullptr;
+                }
+            } else {
+                base_type* root = m_root->template left<I>();
+                assert(root);
+                m_node = tree_max(root)->node();
+            }
             return *this;
         }
         const_iterator operator++(int)
         {
-            const_iterator copy(m_node);
+            const_iterator copy(m_node, m_root);
             ++(*this);
             return copy;
         }
         const_iterator operator--(int)
         {
-            const_iterator copy(m_node);
+            const_iterator copy(m_node, m_root);
             --(*this);
             return copy;
         }
@@ -641,26 +653,26 @@ public:
     std::pair<iterator,bool> emplace(Args&&... args)
     {
         auto [node, success] = m_parent.do_emplace(std::forward<Args>(args)...);
-        return std::make_pair(iterator(node), success);
+        return std::make_pair(make_iterator(node), success);
     }
 
     std::pair<iterator,bool> insert(const T& value)
     {
         auto [node, success] = m_parent.do_insert(value);
-        return std::make_pair(iterator(node), success);
+        return std::make_pair(make_iterator(node), success);
     }
 
     iterator begin() const
     {
         base_type* root = get_root_base();
         if (root == nullptr)
-            return iterator(nullptr);
-        return iterator(tree_min(root)->node());
+            return make_iterator(nullptr);
+        return make_iterator(tree_min(root)->node());
     }
 
     iterator end() const
     {
-        return iterator(nullptr);
+        return make_iterator(nullptr);
     }
 
 
@@ -668,7 +680,7 @@ public:
     {
         T& ref = const_cast<T&>(entry);
         node_type* node = reinterpret_cast<node_type*>(&ref);
-        return iterator(node);
+        return make_iterator(node);
     }
 
     template <typename Callable>
@@ -692,7 +704,7 @@ public:
             } else if (m_comparator(curr_key, key)) {
                 curr = curr->template right<I>();
             } else {
-                return iterator(curr->node());
+                return make_iterator(curr->node());
             }
         }
         return end();
@@ -713,7 +725,7 @@ public:
             }
         }
         if (ret) {
-            return iterator(ret->node());
+            return make_iterator(ret->node());
         } else {
             return end();
         }
@@ -734,7 +746,7 @@ public:
             }
         }
         if (ret) {
-            return iterator(ret->node());
+            return make_iterator(ret->node());
         } else {
             return end();
         }
@@ -792,7 +804,7 @@ public:
         base_type* next = tree_next(node->get_base());
         m_parent.do_erase(node);
         if (next) {
-            return iterator(next->node());
+            return make_iterator(next->node());
         } else {
             return end();
         }
@@ -867,10 +879,7 @@ private:
 
     iterator make_iterator(const node_type* node) const
     {
-        if (node) {
-            return iterator(node);
-        }
-        return end();
+        return iterator(node, &m_roots);
     }
 
 };
