@@ -696,6 +696,40 @@ public:
     }
 
     template<typename CompatibleKey>
+    iterator lower_bound(const CompatibleKey& key) const
+    {
+        base_type* curr = get_root_base();
+        base_type* ret = nullptr;
+        while (curr != nullptr) {
+            const auto& curr_key = m_key_from_value(curr->node()->value());
+            if (!m_comparator(curr_key, key)) {
+                ret = curr;
+                curr = curr->template left<I>();
+            } else {
+                curr = curr->template right<I>();
+            }
+        }
+        return iterator(ret->node());
+    }
+
+    template<typename CompatibleKey>
+    iterator upper_bound(const CompatibleKey& key) const
+    {
+        base_type* curr = get_root_base();
+        base_type* ret = nullptr;
+        while (curr != nullptr) {
+            const auto& curr_key = m_key_from_value(curr->node()->value());
+            if (m_comparator(key, curr_key)) {
+                ret = curr;
+                curr = curr->template left<I>();
+            } else {
+                curr = curr->template right<I>();
+            }
+        }
+        return iterator(ret->node());
+    }
+
+    template<typename CompatibleKey>
     size_t count(const CompatibleKey& key) const
     {
         base_type* parent = nullptr;
