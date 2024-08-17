@@ -23,16 +23,14 @@ public:
         m_base = {};
     }
 
-    explicit tminode(tminode* prev, const T& elem) : m_value(elem), m_prev(prev)
+    explicit tminode(const T& elem) : m_value(elem)
     {
-        if (m_prev) m_prev->m_next = this;
         m_base.m_node = this;
     }
 
     template <typename... Args>
-    tminode(tminode* prev, Args&&... args) : m_value(std::forward<Args>(args)...), m_prev(prev)
+    tminode(Args&&... args) : m_value(std::forward<Args>(args)...)
     {
-        if (m_prev) m_prev->m_next = this;
         m_base.m_node = this;
     }
 
@@ -51,6 +49,15 @@ public:
 
     tminode* next() const { return m_next; }
     tminode* prev() const { return m_prev; }
+
+    void link(tminode* prev)
+    {
+        if (prev) {
+            prev->m_next = this;
+        }
+        m_prev = prev;
+    }
+
 
     void unlink()
     {

@@ -168,6 +168,8 @@ private:
             instance.insert_node(node, hints);
         }, node, m_index_instances,  hints);
 
+        node->link(m_end);
+
         if (m_begin == nullptr) {
             assert(m_end == nullptr);
             m_begin = m_end = node;
@@ -197,7 +199,7 @@ private:
     std::pair<node_type*, bool> do_emplace(Args&&... args)
     {
         node_type* node = m_alloc.allocate(1);
-        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, std::forward<Args>(args)...);
+        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, std::forward<Args>(args)...);
         node_type* conflict = do_insert(node);
         if (conflict != nullptr) {
             std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
@@ -210,7 +212,7 @@ private:
     std::pair<node_type*, bool> do_insert(const T& entry)
     {
         node_type* node = m_alloc.allocate(1);
-        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, m_end, entry);
+        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, entry);
         node_type* conflict = do_insert(node);
         if (conflict != nullptr) {
             std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
