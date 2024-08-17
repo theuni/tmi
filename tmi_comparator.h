@@ -502,7 +502,7 @@ class tmi_comparator
         tree_remove(node->get_base());
     }
 
-    node_type* preinsert_node(node_type* node, insert_hints& hints)
+    node_type* preinsert_node(const node_type* node, insert_hints& hints)
     {
         base_type* parent = nullptr;
         base_type* curr = get_root_base();

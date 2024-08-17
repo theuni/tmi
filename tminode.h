@@ -10,6 +10,7 @@ class tminode
 {
 public:
     using base_type = tminode_base<T, Indices>;
+private:
     T m_value;
     base_type m_base{};
     tminode* m_prev{nullptr};

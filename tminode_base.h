@@ -17,7 +17,7 @@ template <typename T, typename Indices>
 class tminode;
 
 template <typename T, typename Indices>
-struct tminode_base {
+class tminode_base {
     struct rb {
         tminode_base* m_left{nullptr};
         tminode_base* m_right{nullptr};
