@@ -403,6 +403,9 @@ public:
             }
         }
         m_parent.do_erase(node);
+        if (!next) {
+            return end();
+        }
         return iterator(next->node(), &m_buckets);
     }
 
