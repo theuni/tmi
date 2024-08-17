@@ -87,7 +87,7 @@ class tmi_hasher
             base_type* cur_node = bucket;
             while (cur_node) {
                 base_type* next_node = cur_node->template next_hash<I>();
-                const size_t index = cur_node->template hash<I>() % new_buckets.size();
+                const size_t index = cur_node->template hash<I>() % new_size;
                 base_type*& new_bucket = new_buckets.at(index);
                 cur_node->template set_next_hashptr<I>(new_bucket);
                 new_bucket = cur_node;
@@ -294,10 +294,9 @@ public:
 
     iterator begin()
     {
-        for (size_t i = 0; i < m_buckets.size(); ++i) {
-            base_type* base = m_buckets.at(i);
-            if (base) {
-                return iterator(base->node(), &m_buckets);
+        for (const auto& bucket : m_buckets) {
+            if (bucket) {
+                return iterator(bucket->node(), &m_buckets);
             }
         }
         return iterator(nullptr, &m_buckets);
@@ -305,10 +304,9 @@ public:
 
     const_iterator begin() const
     {
-        for (size_t i = 0; i < m_buckets.size(); ++i) {
-            base_type* base = m_buckets.at(i);
-            if (base) {
-                return const_iterator(base->node(), &m_buckets);
+        for (const auto& bucket : m_buckets) {
+            if (bucket) {
+                return const_iterator(bucket->node(), &m_buckets);
             }
         }
         return const_iterator(nullptr, &m_buckets);
@@ -358,8 +356,7 @@ public:
         if (!bucket_count) {
             return iterator(nullptr, &m_buckets);
         }
-        const size_t bucket = hash % bucket_count;
-        auto* node = m_buckets.at(bucket);
+        auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
                 if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
@@ -379,8 +376,7 @@ public:
         if (!bucket_count) {
             return iterator(nullptr, &m_buckets);
         }
-        const size_t bucket = hash % bucket_count;
-        auto* node = m_buckets.at(bucket);
+        auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
                 if (m_pred(m_key_from_value(node->node()->value()), key)) {
@@ -419,8 +415,7 @@ public:
         if (!bucket_count) {
             return 0;
         }
-        const size_t bucket = hash % bucket_count;
-        auto* node = m_buckets.at(bucket);
+        auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
                 if (m_pred(m_key_from_value(node->node()->value()), key)) {
@@ -441,8 +436,7 @@ public:
         if (!bucket_count) {
             return 0;
         }
-        const size_t bucket = hash % bucket_count;
-        auto* node = m_buckets.at(bucket);
+        auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
                 if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
