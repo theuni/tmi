@@ -150,14 +150,20 @@ private:
         indices_hints_tuple hints;
 
         bool can_insert;
-        node_type* conflict = nullptr;
-        can_insert = get_foreach_index([&conflict]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& hints) {
+        std::array<node_type*, num_indices> conflicts{};
+        can_insert = get_foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& hints, auto& conflict) TMI_CPP23_STATIC {
             conflict = instance.preinsert_node(node, hints);
             return conflict == nullptr;
-        }, node, m_index_instances, hints);
+        }, node, m_index_instances, hints, conflicts);
 
-        if (!can_insert) return conflict;
-
+        if (!can_insert) {
+            for (const auto& conflict : conflicts) {
+                if(conflict) {
+                    return conflict;
+                }
+            }
+        }
+        assert(can_insert);
         foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& hints) TMI_CPP23_STATIC {
             instance.insert_node(node, hints);
         }, node, m_index_instances,  hints);
