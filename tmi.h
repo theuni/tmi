@@ -52,6 +52,9 @@ public:
         using type = typename detail::index_type_helper<T, Indices, Allocator, multi_index_container<T, Indices, Allocator>, I>::type;
     };
 
+    template <int I>
+    using nth_index_t = typename nth_index<I>::type;
+
     template <typename Tag>
     struct index
     {
@@ -71,6 +74,12 @@ public:
         static_assert(value < num_indices, "tag not found");
         using type = typename nth_index<value>::type;
     };
+
+    template <typename Tag>
+    using index_t = typename index<Tag>::type;
+
+    template <typename Tag>
+    static constexpr size_t index_v = index<Tag>::value;
 
     template <typename>
     struct index_tuple_helper;
