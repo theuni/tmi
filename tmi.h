@@ -142,18 +142,6 @@ private:
         }
     }
 
-    template <int I>
-    const typename nth_index<I>::type& get_index_instance() const noexcept
-    {
-        return std::get<I>(m_index_instances);
-    }
-
-    template <int I>
-    typename nth_index<I>::type& get_index_instance() noexcept
-    {
-        return std::get<I>(m_index_instances);
-    }
-
     node_type* do_insert(node_type* node)
     {
         indices_hints_tuple hints;
@@ -338,49 +326,49 @@ public:
     template<size_t I, typename IteratorType>
     typename nth_index_t<I>::iterator project(IteratorType it)
     {
-        return get_index_instance<I>().make_iterator(it.m_node);
+        return std::get<I>(m_index_instances).make_iterator(it.m_node);
     }
 
     template<size_t I, typename IteratorType>
     typename nth_index_t<I>::const_iterator project(IteratorType it) const
     {
-        return get_index_instance<I>().make_iterator(it.m_node);
+        return std::get<I>(m_index_instances).make_iterator(it.m_node);
     }
 
     template<typename Tag, typename IteratorType>
     typename index_t<Tag>::iterator project(IteratorType it)
     {
-        return get_index_instance<index_v<Tag>>().make_iterator(it.m_node);
+        return std::get<index_v<Tag>>(m_index_instances).make_iterator(it.m_node);
     }
 
     template<typename Tag,typename IteratorType>
     typename index_t<Tag>::const_iterator project(IteratorType it) const
     {
-        return get_index_instance<index_v<Tag>>().make_iterator(it.m_node);
+        return std::get<index_v<Tag>>(m_index_instances).make_iterator(it.m_node);
     }
 
     template<size_t I>
     nth_index_t<I>& get() noexcept
     {
-        return get_index_instance<I>();
+        return std::get<I>(m_index_instances);
     }
 
     template<int I>
     const nth_index_t<I>& get() const noexcept
     {
-        return get_index_instance<I>();
+        return std::get<I>(m_index_instances);
     }
 
     template<typename Tag>
     index_t<Tag>& get() noexcept
     {
-        return get_index_instance<index_v<Tag>>();
+        return std::get<index_v<Tag>>(m_index_instances);
     }
 
     template<typename Tag>
     const index_t<Tag>& get() const noexcept
     {
-        return get_index_instance<index_v<Tag>>();
+        return std::get<index_v<Tag>>(m_index_instances);
     }
 };
 
