@@ -247,7 +247,6 @@ public:
 
         iterator(const node_type* node, const hash_buckets* buckets) : m_node(node), m_buckets(buckets) {}
         friend class tmi_hasher;
-        friend Parent;
     public:
 
         typedef const T value_type;
@@ -468,6 +467,11 @@ public:
     }
 
 private:
+
+    const node_type* node_from_iterator(iterator it) const
+    {
+        return it.m_node;
+    }
 
     iterator make_iterator(const node_type* node) const
     {

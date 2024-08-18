@@ -81,6 +81,27 @@ public:
     template <typename Tag>
     static constexpr size_t index_v = index<Tag>::value;
 
+
+    template <typename Iterator>
+    struct index_iterator
+    {
+        template <size_t I = 0>
+        static constexpr size_t get_index_for_iterator()
+        {
+            using nth_iterator = typename nth_index_t<I>::iterator;
+            if constexpr (std::is_same_v<Iterator, nth_iterator>) return I;
+            else if constexpr (I + 1 < num_indices) return get_index_for_iterator<I + 1>();
+            else return num_indices;
+        }
+        static constexpr size_t value = get_index_for_iterator();
+        static_assert(value < num_indices, "iterator");
+        using type = typename nth_index_t<value>::iterator;
+    };
+
+    template <typename Iterator>
+    static constexpr size_t index_iterator_v = index_iterator<Iterator>::value;
+
+
     template <typename>
     struct index_tuple_helper;
     template <size_t First, size_t... ints>
@@ -322,29 +343,36 @@ public:
         return sizeof(node_type);
     }
 
-
     template<size_t I, typename IteratorType>
     typename nth_index_t<I>::iterator project(IteratorType it)
     {
-        return std::get<I>(m_index_instances).make_iterator(it.m_node);
+        static constexpr size_t from_iterator_index = index_iterator_v<IteratorType>;
+        const node_type* node = std::get<from_iterator_index>(m_index_instances).node_from_iterator(it);
+        return std::get<I>(m_index_instances).make_iterator(node);
     }
 
     template<size_t I, typename IteratorType>
     typename nth_index_t<I>::const_iterator project(IteratorType it) const
     {
-        return std::get<I>(m_index_instances).make_iterator(it.m_node);
+        static constexpr size_t from_iterator_index = index_iterator_v<IteratorType>;
+        const node_type* node = std::get<from_iterator_index>(m_index_instances).node_from_iterator(it);
+        return std::get<I>(m_index_instances).make_iterator(node);
     }
 
     template<typename Tag, typename IteratorType>
     typename index_t<Tag>::iterator project(IteratorType it)
     {
-        return std::get<index_v<Tag>>(m_index_instances).make_iterator(it.m_node);
+        static constexpr size_t from_iterator_index = index_iterator_v<IteratorType>;
+        const node_type* node = std::get<from_iterator_index>(m_index_instances).node_from_iterator(it);
+        return std::get<index_v<Tag>>(m_index_instances).make_iterator(node);
     }
 
     template<typename Tag,typename IteratorType>
     typename index_t<Tag>::const_iterator project(IteratorType it) const
     {
-        return std::get<index_v<Tag>>(m_index_instances).make_iterator(it.m_node);
+        static constexpr size_t from_iterator_index = index_iterator_v<IteratorType>;
+        const node_type* node = std::get<from_iterator_index>(m_index_instances).node_from_iterator(it);
+        return std::get<index_v<Tag>>(m_index_instances).make_iterator(node);
     }
 
     template<size_t I>

@@ -594,7 +594,6 @@ public:
         const base_type* m_root{};
         const_iterator(const node_type* node, const base_type* root) : m_node(node), m_root(root){}
         friend tmi_comparator;
-        friend Parent;
     public:
         typedef const T value_type;
         typedef const T* pointer;
@@ -875,6 +874,11 @@ public:
     }
 
 private:
+
+    const node_type* node_from_iterator(iterator it) const
+    {
+        return it.m_node;
+    }
 
     iterator make_iterator(const node_type* node) const
     {
