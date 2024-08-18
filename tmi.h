@@ -72,7 +72,7 @@ public:
         }
         static constexpr size_t value = get_index_for_tag();
         static_assert(value < num_indices, "tag not found");
-        using type = typename nth_index<value>::type;
+        using type = nth_index_t<value>;
     };
 
     template <typename Tag>
@@ -85,16 +85,16 @@ public:
     struct index_tuple_helper;
     template <size_t First, size_t... ints>
     struct index_tuple_helper<std::index_sequence<First, ints...>> {
-        using index_types = std::tuple<inherited_index&, typename nth_index<ints>::type ...>;
-        using hints_types =  std::tuple<typename nth_index<First>::type::insert_hints, typename nth_index<ints>::type::insert_hints ...>;
-        using premodify_cache_types = std::tuple<typename nth_index<First>::type::premodify_cache, typename nth_index<ints>::type::premodify_cache ...>;
+        using index_types = std::tuple<inherited_index&, nth_index_t<ints> ...>;
+        using hints_types =  std::tuple<typename nth_index_t<First>::insert_hints, typename nth_index_t<ints>::insert_hints ...>;
+        using premodify_cache_types = std::tuple<typename nth_index_t<First>::premodify_cache, typename nth_index_t<ints>::premodify_cache ...>;
 
         template <typename Args>
         static index_types make_index_types(parent_type& parent, Args&& args) {
-            return std::make_tuple(std::ref(parent), typename nth_index<ints>::type(parent, std::get<ints>(std::forward<Args>(args))) ...);
+            return std::make_tuple(std::ref(parent), nth_index_t<ints>(parent, std::get<ints>(std::forward<Args>(args))) ...);
         }
         static index_types make_index_types(parent_type& parent) {
-            return std::make_tuple(std::ref(parent), typename nth_index<ints>::type(parent) ...);
+            return std::make_tuple(std::ref(parent), nth_index_t<ints>(parent) ...);
         }
     };
 
@@ -160,7 +160,7 @@ private:
 
         bool can_insert;
         std::array<node_type*, num_indices> conflicts{};
-        can_insert = get_foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& hints, auto& conflict) TMI_CPP23_STATIC {
+        can_insert = get_foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, auto& hints, auto& conflict) TMI_CPP23_STATIC {
             conflict = instance.preinsert_node(node, hints);
             return conflict == nullptr;
         }, node, m_index_instances, hints, conflicts);
@@ -173,7 +173,7 @@ private:
             }
         }
         assert(can_insert);
-        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& hints) TMI_CPP23_STATIC {
+        foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, const auto& hints) TMI_CPP23_STATIC {
             instance.insert_node(node, hints);
         }, node, m_index_instances,  hints);
 
@@ -233,7 +233,7 @@ private:
 
     void do_erase(node_type* node)
     {
-        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance) TMI_CPP23_STATIC {
+        foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance) TMI_CPP23_STATIC {
             instance.remove_node(node);
         }, node, m_index_instances);
         do_erase_cleanup(node);
@@ -244,8 +244,8 @@ private:
     {
         indices_premodify_cache_tuple index_cache;
 
-        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& cache) TMI_CPP23_STATIC {
-            if constexpr (nth_index<I>::type::requires_premodify_cache()) {
+        foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, auto& cache) TMI_CPP23_STATIC {
+            if constexpr (nth_index_t<I>::requires_premodify_cache()) {
                 instance.create_premodify_cache(node, cache);
             }
         }, node, m_index_instances,  index_cache);
@@ -255,25 +255,25 @@ private:
 
         std::array<bool, num_indices> indicies_to_modify{};
 
-        foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, auto& modify, const auto& cache) TMI_CPP23_STATIC {
+        foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, auto& modify, const auto& cache) TMI_CPP23_STATIC {
             modify = instance.erase_if_modified(node, cache);
          }, node, m_index_instances,  indicies_to_modify, index_cache);
 
 
         indices_hints_tuple index_hints;
 
-        bool insertable = get_foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify, auto& hints) TMI_CPP23_STATIC {
+        bool insertable = get_foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, const auto& modify, auto& hints) TMI_CPP23_STATIC {
             if (modify) return instance.preinsert_node(node, hints) == nullptr;
             return true;
         }, node, m_index_instances,  indicies_to_modify, index_hints);
 
         if (insertable) {
-            foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify, const auto& hints) TMI_CPP23_STATIC {
+            foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, const auto& modify, const auto& hints) TMI_CPP23_STATIC {
                 if (modify) instance.insert_node(node, hints);
             }, node, m_index_instances,  indicies_to_modify, index_hints);
             return true;
         } else {
-            foreach_index([]<int I>(node_type* node, typename nth_index<I>::type& instance, const auto& modify) TMI_CPP23_STATIC {
+            foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, const auto& modify) TMI_CPP23_STATIC {
                 if (!modify) instance.remove_node(node);
             }, node, m_index_instances,  indicies_to_modify);
             do_erase_cleanup(node);
@@ -283,7 +283,7 @@ private:
 
     void do_clear()
     {
-        foreach_index([]<int I>(std::nullptr_t, typename nth_index<I>::type& instance) TMI_CPP23_STATIC {
+        foreach_index([]<int I>(std::nullptr_t, nth_index_t<I>& instance) TMI_CPP23_STATIC {
             instance.do_clear();
          }, nullptr, m_index_instances);
 
@@ -336,51 +336,51 @@ public:
 
 
     template<size_t I, typename IteratorType>
-    typename nth_index<I>::type::iterator project(IteratorType it)
+    typename nth_index_t<I>::iterator project(IteratorType it)
     {
         return get_index_instance<I>().make_iterator(it.m_node);
     }
 
     template<size_t I, typename IteratorType>
-    typename nth_index<I>::type::const_iterator project(IteratorType it) const
+    typename nth_index_t<I>::const_iterator project(IteratorType it) const
     {
         return get_index_instance<I>().make_iterator(it.m_node);
     }
 
     template<typename Tag, typename IteratorType>
-    typename index<Tag>::type::iterator project(IteratorType it)
+    typename index_t<Tag>::iterator project(IteratorType it)
     {
-        return get_index_instance<index<Tag>::value>().make_iterator(it.m_node);
+        return get_index_instance<index_v<Tag>>().make_iterator(it.m_node);
     }
 
     template<typename Tag,typename IteratorType>
-    typename index<Tag>::type::const_iterator project(IteratorType it) const
+    typename index_t<Tag>::const_iterator project(IteratorType it) const
     {
-        return get_index_instance<index<Tag>::value>().make_iterator(it.m_node);
+        return get_index_instance<index_v<Tag>>().make_iterator(it.m_node);
     }
 
     template<size_t I>
-    typename nth_index<I>::type& get() noexcept
+    nth_index_t<I>& get() noexcept
     {
         return get_index_instance<I>();
     }
 
-    template<int I> const typename
-    nth_index<I>::type& get() const noexcept
+    template<int I>
+    const nth_index_t<I>& get() const noexcept
     {
         return get_index_instance<I>();
     }
 
     template<typename Tag>
-    typename index<Tag>::type& get() noexcept
+    index_t<Tag>& get() noexcept
     {
-        return get_index_instance<index<Tag>::value>();
+        return get_index_instance<index_v<Tag>>();
     }
 
     template<typename Tag>
-    const typename index<Tag>::type& get() const noexcept
+    const index_t<Tag>& get() const noexcept
     {
-        return get_index_instance<index<Tag>::value>();
+        return get_index_instance<index_v<Tag>>();
     }
 };
 
