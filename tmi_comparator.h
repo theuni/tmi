@@ -664,7 +664,7 @@ public:
     {
         base_type* root = get_root_base();
         if (root == nullptr)
-            return make_iterator(nullptr);
+            return end();
         return make_iterator(tree_min(root)->node());
     }
 

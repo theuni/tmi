@@ -295,49 +295,49 @@ public:
     {
         for (const auto& bucket : m_buckets) {
             if (bucket) {
-                return iterator(bucket->node(), &m_buckets);
+                return make_iterator(bucket->node());
             }
         }
-        return iterator(nullptr, &m_buckets);
+        return end();
     }
 
     const_iterator begin() const
     {
         for (const auto& bucket : m_buckets) {
             if (bucket) {
-                return const_iterator(bucket->node(), &m_buckets);
+                return make_iterator(bucket->node());
             }
         }
-        return const_iterator(nullptr, &m_buckets);
+        return end();
     }
 
     iterator end()
     {
-        return const_iterator(nullptr, &m_buckets);
+        return make_iterator(nullptr);
     }
 
     const_iterator end() const
     {
-        return const_iterator(nullptr, &m_buckets);
+        return make_iterator(nullptr);
     }
 
     iterator iterator_to(const T& entry)
     {
         const node_type* node = reinterpret_cast<const node_type*>(&entry);
-        return iterator(node, &m_buckets);
+        return make_iterator(node);
     }
 
     const_iterator iterator_to(const T& entry) const
     {
         const node_type* node = reinterpret_cast<const node_type*>(&entry);
-        return const_iterator(node, &m_buckets);
+        return make_iterator(node);
     }
 
     template <typename... Args>
     std::pair<iterator,bool> emplace(Args&&... args)
     {
         auto [node, success] = m_parent.do_emplace(std::forward<Args>(args)...);
-        return std::make_pair(iterator(node, &m_buckets), success);
+        return std::make_pair(make_iterator(node), success);
     }
 
     template <typename Callable>
@@ -353,18 +353,18 @@ public:
         const size_t hash = m_hasher(hash_key);
         const size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
-            return iterator(nullptr, &m_buckets);
+            return end();
         }
         auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
                 if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
-                    return iterator(node->node(), &m_buckets);
+                    return make_iterator(node->node());
                 }
             }
             node = node->template next_hash<I>();
         }
-        return iterator(nullptr, &m_buckets);
+        return end();
     }
 
     iterator find(const T& value) const
@@ -373,24 +373,24 @@ public:
         const size_t hash = m_hasher(key);
         const size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
-            return iterator(nullptr, &m_buckets);
+            return end();
         }
         auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
                 if (m_pred(m_key_from_value(node->node()->value()), key)) {
-                    return iterator(node->node(), &m_buckets);
+                    return make_iterator(node->node());
                 }
             }
             node = node->template next_hash<I>();
         }
-        return iterator(nullptr, &m_buckets, 0);
+        return end();
     }
 
     iterator erase(iterator it)
     {
         node_type* node = const_cast<node_type*>(it.m_node);
-        if (!node) return iterator(nullptr, &m_buckets);
+        if (!node) return end();
         base_type* next = get_next_hash(node->get_base());
         if (!next) {
             const size_t bucket_size = m_buckets.size();
@@ -405,7 +405,7 @@ public:
         if (!next) {
             return end();
         }
-        return iterator(next->node(), &m_buckets);
+        return make_iterator(next->node());
     }
 
     size_t count(const T& value) const
