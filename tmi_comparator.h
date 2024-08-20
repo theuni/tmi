@@ -502,6 +502,44 @@ class tmi_comparator
         tree_remove(node->get_base());
     }
 
+    void insert_node_direct(node_type* node)
+    {
+        base_type* base = node->get_base();
+        base_type* parent = nullptr;
+        base_type* curr = get_root_base();
+        const auto& key = m_key_from_value(node->value());
+
+        bool inserted_left = false;
+        while (curr != nullptr) {
+            parent = curr;
+            const auto& curr_key = m_key_from_value(curr->node()->value());
+            if (m_comparator(key, curr_key)) {
+                curr = curr->template left<I>();
+                inserted_left = true;
+            } else {
+                curr = curr->template right<I>();
+                inserted_left = false;
+            }
+        }
+
+        base->template set_left<I>(nullptr);
+        base->template set_right<I>(nullptr);
+        base->template set_color<I>(Color::RED);
+
+        if(parent) {
+            if (inserted_left) {
+                parent->template set_left<I>(base);
+            } else {
+                parent->template set_right<I>(base);
+            }
+            base->template set_parent<I>(parent);
+        } else {
+            set_root_node(node);
+            base->template set_parent<I>(&m_roots);
+        }
+        tree_balance_after_insert(get_root_base(), base);
+    }
+
     node_type* preinsert_node(const node_type* node, insert_hints& hints)
     {
         base_type* parent = nullptr;

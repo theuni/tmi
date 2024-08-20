@@ -125,6 +125,21 @@ class tmi_hasher
         }
     }
 
+    void insert_node_direct(node_type* node)
+    {
+        base_type* base = node->get_base();
+
+        if (base->template hash<I>() == 0) {
+            const size_t hash = m_hasher(m_key_from_value(node->value()));
+            base->template set_hash<I>(hash);
+        }
+        const size_t index = base->template hash<I>() % m_buckets.size();
+        base_type*& bucket = m_buckets.at(index);
+
+        base->template set_next_hashptr<I>(bucket);
+        bucket = base;
+    }
+
     /*
         First rehash if necessary, using first_hashes_resize as the initial
         size if empty. Then find calculate the bucket and insert there.
