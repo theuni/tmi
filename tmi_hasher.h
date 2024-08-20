@@ -21,10 +21,12 @@ class tmi_hasher
     using node_type = Node;
     using base_type = typename node_type::base_type;
     using hash_buckets = std::vector<base_type*>;
-    using key_from_value_type = typename Hasher::key_from_value_type;
-    using hash_type = typename key_from_value_type::result_type;
-    using hasher_type = typename Hasher::hasher_type;
-    using pred_type = typename Hasher::pred_type;
+    using size_type = size_t;
+    using key_from_value = typename Hasher::key_from_value_type;
+    using key_type = typename key_from_value::result_type;
+    using hasher = typename Hasher::hasher_type;
+    using key_equal = typename Hasher::pred_type;
+    using ctor_args = std::tuple<size_type,key_from_value,hasher,key_equal>;
     friend Parent;
 
     static constexpr bool hashed_unique() { return Hasher::is_hashed_unique(); }
@@ -45,14 +47,14 @@ class tmi_hasher
 
     Parent& m_parent;
     hash_buckets m_buckets;
-    key_from_value_type m_key_from_value;
-    hasher_type m_hasher;
-    pred_type m_pred;
+    key_from_value m_key_from_value;
+    hasher m_hasher;
+    key_equal m_pred;
 
     tmi_hasher(Parent& parent) : m_parent(parent){}
 
     template <typename TupleArgs>
-    tmi_hasher(Parent& parent, TupleArgs&& args) : m_parent(parent), m_key_from_value(std::get<0>(std::forward<TupleArgs>(args))),  m_hasher(std::get<1>(std::forward<TupleArgs>(args))),  m_pred(std::get<2>(std::forward<TupleArgs>(args))){}
+    tmi_hasher(Parent& parent, TupleArgs&& args) : m_parent(parent), m_buckets(std::get<0>(std::forward<TupleArgs>(args)), nullptr), m_key_from_value(std::get<1>(std::forward<TupleArgs>(args))),  m_hasher(std::get<2>(std::forward<TupleArgs>(args))),  m_pred(std::get<3>(std::forward<TupleArgs>(args))){}
 
 
     static base_type* get_next_hash(base_type* base)
@@ -214,7 +216,7 @@ class tmi_hasher
     }
 
 
-    node_type* find_hash(const hash_type& hash_key) const
+    node_type* find_hash(const key_type& hash_key) const
     {
         const size_t hash = m_hasher(hash_key);
         const size_t bucket_count = m_buckets.size();
@@ -348,7 +350,7 @@ public:
         return m_parent.do_modify(node, std::forward<Callable>(func));
     }
 
-    iterator find(const hash_type& hash_key) const
+    iterator find(const key_type& hash_key) const
     {
         const size_t hash = m_hasher(hash_key);
         const size_t bucket_count = m_buckets.size();
@@ -430,7 +432,7 @@ public:
         return ret;
     }
 
-    size_t count(const hash_type& hash_key) const
+    size_t count(const key_type& hash_key) const
     {
         size_t ret = 0;
         const size_t hash = m_hasher(hash_key);

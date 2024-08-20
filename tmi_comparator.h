@@ -24,9 +24,10 @@ class tmi_comparator
     using node_type = Node;
     using base_type = typename node_type::base_type;
     using Color = typename base_type::Color;
-    using key_from_value_type = typename Comparator::key_from_value_type;
-    using comparator_type = typename Comparator::comparator;
-    using key_type = typename Comparator::key_from_value_type::result_type;
+    using key_from_value = typename Comparator::key_from_value_type;
+    using key_compare = typename Comparator::comparator;
+    using key_type = typename key_from_value::result_type;
+    using ctor_args = std::tuple<key_from_value,key_compare>;
     static constexpr bool sorted_unique() { return Comparator::is_ordered_unique(); }
     friend Parent;
 
@@ -41,8 +42,8 @@ class tmi_comparator
     Parent& m_parent;
 
     base_type m_roots;
-    key_from_value_type m_key_from_value;
-    comparator_type m_comparator;
+    key_from_value m_key_from_value;
+    key_compare m_comparator;
 
     tmi_comparator(Parent& parent) : m_parent(parent){}
 
