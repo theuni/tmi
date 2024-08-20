@@ -218,7 +218,7 @@ private:
     std::pair<node_type*, bool> do_emplace(Args&&... args)
     {
         node_type* node = m_alloc.allocate(1);
-        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, std::forward<Args>(args)...);
+        node = std::uninitialized_construct_using_allocator<node_type>(node, m_alloc, std::in_place_t{}, std::forward<Args>(args)...);
         node_type* conflict = do_insert(node);
         if (conflict != nullptr) {
             std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);

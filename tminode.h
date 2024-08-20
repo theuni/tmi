@@ -29,7 +29,7 @@ public:
     }
 
     template <typename... Args>
-    tminode(Args&&... args) : m_value(std::forward<Args>(args)...)
+    tminode(std::in_place_t, Args&&... args) : m_value(std::forward<Args>(args)...)
     {
         m_base.m_node = this;
     }
