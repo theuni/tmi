@@ -47,8 +47,7 @@ class tmi_comparator
 
     tmi_comparator(Parent& parent) : m_parent(parent){}
 
-    template <typename TupleArgs>
-    tmi_comparator(Parent& parent, TupleArgs&& args) : m_parent(parent), m_key_from_value(std::get<0>(std::forward<TupleArgs>(args))), m_comparator(std::get<1>(std::forward<TupleArgs>(args))){}
+    tmi_comparator(Parent& parent, const ctor_args& args) : m_parent(parent), m_key_from_value(std::get<0>(args)), m_comparator(std::get<1>(args)){}
 
     base_type* get_root_base() const
     {

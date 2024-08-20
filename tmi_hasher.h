@@ -53,8 +53,7 @@ class tmi_hasher
 
     tmi_hasher(Parent& parent) : m_parent(parent){}
 
-    template <typename TupleArgs>
-    tmi_hasher(Parent& parent, TupleArgs&& args) : m_parent(parent), m_buckets(std::get<0>(std::forward<TupleArgs>(args)), nullptr), m_key_from_value(std::get<1>(std::forward<TupleArgs>(args))),  m_hasher(std::get<2>(std::forward<TupleArgs>(args))),  m_pred(std::get<3>(std::forward<TupleArgs>(args))){}
+    tmi_hasher(Parent& parent, const ctor_args& args) : m_parent(parent), m_buckets(std::get<0>(args), nullptr), m_key_from_value(std::get<1>(args)), m_hasher(std::get<2>(args)), m_pred(std::get<3>(args)){}
 
 
     static base_type* get_next_hash(base_type* base)
