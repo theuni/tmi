@@ -114,6 +114,9 @@ public:
         static index_types make_index_types(parent_type& parent, const ctor_args_types& args) {
             return std::make_tuple(std::ref(parent), nth_index_t<ints>(parent, std::get<ints>(args)) ...);
         }
+        static index_types make_index_types(parent_type& parent, const index_types& rhs) {
+            return std::make_tuple(std::ref(parent), nth_index_t<ints>(parent, std::get<ints>(rhs)) ...);
+        }
         static index_types make_index_types(parent_type& parent) {
             return std::make_tuple(std::ref(parent), nth_index_t<ints>(parent) ...);
         }
@@ -338,6 +341,41 @@ public:
     ~multi_index_container()
     {
         do_clear();
+    }
+
+    multi_index_container(const multi_index_container& rhs)
+        : inherited_index(*this, *static_cast<const inherited_index*>(&rhs)),
+          m_index_instances(index_tuple_helper<std::make_index_sequence<num_indices>>::make_index_types(*this, rhs.m_index_instances)),
+          m_alloc(rhs.m_alloc)
+    {
+        if (!rhs.m_size) {
+            return;
+        }
+        node_type* from_node = rhs.m_begin;
+        node_type* prev_node = nullptr;
+        node_type* to_node = nullptr;
+        m_begin = to_node;
+        for(size_t i = 0; i < rhs.m_size; i++)
+        {
+            to_node = m_alloc.allocate(1);
+            std::uninitialized_construct_using_allocator<node_type>(to_node, m_alloc, *from_node);
+            if(i == 0) {
+                m_begin = to_node;
+            }
+            to_node->link(prev_node);
+            prev_node = to_node;
+            from_node = from_node->next();
+        }
+        m_end = prev_node;
+
+        to_node = m_begin;
+        while(to_node) {
+            foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance) TMI_CPP23_STATIC {
+                instance.insert_node_direct(node);
+            }, to_node, m_index_instances);
+            to_node = to_node->next();
+            m_size++;
+        }
     }
 
     static constexpr size_t node_size()

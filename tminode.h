@@ -23,6 +23,11 @@ public:
         m_base = {};
     }
 
+    tminode(const tminode& rhs) : m_value(rhs.m_value), m_base(rhs.m_base)
+    {
+        m_base.m_node = this;
+    }
+
     explicit tminode(const T& elem) : m_value(elem)
     {
         m_base.m_node = this;
