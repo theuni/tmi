@@ -142,7 +142,6 @@ private:
     indices_tuple m_index_instances;
 
     node_allocator_type m_alloc;
-    ctor_args_list m_ctor_args;
 
 
     template <int I = 0, class Callable, typename Node, typename... Args>
@@ -325,16 +324,14 @@ public:
     multi_index_container(const allocator_type& alloc = {})
         : inherited_index(*this),
           m_index_instances(index_tuple_helper<std::make_index_sequence<num_indices>>::make_index_types(*this)),
-          m_alloc(alloc),
-          m_ctor_args{}
+          m_alloc(alloc)
     {
     }
 
     multi_index_container(const ctor_args_list& args, const allocator_type& alloc = {})
         : inherited_index(*this, std::get<0>(args)),
           m_index_instances(index_tuple_helper<std::make_index_sequence<num_indices>>::make_index_types(*this, args)),
-          m_alloc(alloc),
-          m_ctor_args(args)
+          m_alloc(alloc)
     {
     }
 
