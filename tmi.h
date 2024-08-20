@@ -117,6 +117,9 @@ public:
         static index_types make_index_types(parent_type& parent, const index_types& rhs) {
             return std::make_tuple(std::ref(parent), nth_index_t<ints>(parent, std::get<ints>(rhs)) ...);
         }
+        static index_types make_index_types(parent_type& parent, index_types&& rhs) {
+            return std::make_tuple(std::ref(parent), nth_index_t<ints>(parent, std::move(std::get<ints>(rhs))) ...);
+        }
         static index_types make_index_types(parent_type& parent) {
             return std::make_tuple(std::ref(parent), nth_index_t<ints>(parent) ...);
         }
@@ -373,6 +376,19 @@ public:
             to_node = to_node->next();
             m_size++;
         }
+    }
+
+    multi_index_container(multi_index_container&& rhs)
+        : inherited_index(*this, std::move(*static_cast<const inherited_index*>(&rhs))),
+          m_index_instances(index_tuple_helper<std::make_index_sequence<num_indices>>::make_index_types(*this, std::move(rhs.m_index_instances))),
+          m_alloc(std::move(rhs.m_alloc))
+    {
+        m_size = rhs.m_size;
+        m_begin = rhs.m_begin;
+        m_end = rhs.m_end;
+        rhs.m_begin = nullptr;
+        rhs.m_end = nullptr;
+        rhs.m_size = 0;
     }
 
     static constexpr size_t node_size()
