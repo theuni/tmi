@@ -5,6 +5,8 @@
 #ifndef TMI_HASHER_H_
 #define TMI_HASHER_H_
 
+#include "tmi_nodehandle.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -29,6 +31,8 @@ class tmi_hasher
     using ctor_args = std::tuple<size_type,key_from_value,hasher,key_equal>;
     using allocator_type = Allocator;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
+    using node_handle = detail::node_handle<Allocator, Node>;
+
     friend Parent;
 
     static constexpr bool hashed_unique() { return Hasher::is_hashed_unique(); }
@@ -487,6 +491,11 @@ public:
     bool empty() const
     {
         return m_parent.get_empty();
+    }
+
+    node_handle extract(const_iterator it)
+    {
+        return m_parent.do_extract(const_cast<node_type*>(it.m_node));
     }
 
     allocator_type get_allocator() const noexcept

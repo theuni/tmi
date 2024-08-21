@@ -10,6 +10,8 @@
 #ifndef TMI_COMPARATOR_H_
 #define TMI_COMPARATOR_H_
 
+#include "tmi_nodehandle.h"
+
 #include <cassert>
 #include <cstddef>
 #include <iterator>
@@ -30,6 +32,8 @@ class tmi_comparator
     using ctor_args = std::tuple<key_from_value,key_compare>;
     using allocator_type = Allocator;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
+    using node_handle = detail::node_handle<Allocator, Node>;
+
     static constexpr bool sorted_unique() { return Comparator::is_ordered_unique(); }
     friend Parent;
 
@@ -921,6 +925,11 @@ public:
     bool empty() const
     {
         return m_parent.get_empty();
+    }
+
+    node_handle extract(const_iterator it)
+    {
+        return m_parent.do_extract(const_cast<node_type*>(it.m_node));
     }
 
     allocator_type get_allocator() const noexcept

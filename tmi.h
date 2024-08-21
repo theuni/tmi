@@ -9,6 +9,7 @@
 #include "tmi_comparator.h"
 #include "tmi_hasher.h"
 #include "tmi_index.h"
+#include "tmi_nodehandle.h"
 
 #include <array>
 #include <cassert>
@@ -44,6 +45,8 @@ public:
     using node_type = tminode<T, Indices>;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using inherited_index = typename detail::index_type_helper<T, Indices, Allocator, multi_index_container<T, Indices, Allocator>, 0>::type;
+    using node_handle = detail::node_handle<allocator_type, node_type>;
+
     static constexpr size_t num_indices = std::tuple_size<index_types>();
 
     template <int I>
@@ -320,6 +323,24 @@ private:
     bool get_empty() const
     {
         return m_size == 0;
+    }
+
+    node_handle do_extract(node_type* node)
+    {
+        if(node) {
+            foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance) TMI_CPP23_STATIC {
+                instance.remove_node(node);
+            }, node, m_index_instances);
+            if (node == m_end) {
+                m_end = node->prev();
+            }
+            if (node == m_begin) {
+                m_begin = node->next();
+            }
+            node->unlink();
+            m_size--;
+        }
+        return node_handle(m_alloc, node);
     }
 
 public:
