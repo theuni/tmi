@@ -24,7 +24,7 @@ template <typename T, typename Node, typename Comparator, typename Parent, typen
 class tmi_comparator
 {
 public:
-    class const_iterator;
+    class iterator;
 
     using node_type = Node;
     using base_type = typename node_type::base_type;
@@ -36,7 +36,7 @@ public:
     using allocator_type = Allocator;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using node_handle = detail::node_handle<Allocator, Node>;
-    using insert_return_type = detail::insert_return_type<const_iterator, node_handle>;
+    using insert_return_type = detail::insert_return_type<iterator, node_handle>;
 
 private:
     static constexpr bool sorted_unique() { return Comparator::is_ordered_unique(); }
@@ -647,11 +647,11 @@ private:
 
 public:
 
-    class const_iterator
+    class iterator
     {
         const node_type* m_node{};
         const base_type* m_root{};
-        const_iterator(const node_type* node, const base_type* root) : m_node(node), m_root(root){}
+        iterator(const node_type* node, const base_type* root) : m_node(node), m_root(root){}
         friend tmi_comparator;
     public:
         typedef const T value_type;
@@ -660,10 +660,10 @@ public:
         typedef std::ptrdiff_t difference_type;
         using iterator_category = std::bidirectional_iterator_tag;
         using element_type = const T;
-        const_iterator() = default;
+        iterator() = default;
         const T& operator*() const { return m_node->value(); }
         const T* operator->() const { return &m_node->value(); }
-        const_iterator& operator++()
+        iterator& operator++()
         {
             const base_type* next = tree_next(m_node->get_base());
             if (next) {
@@ -673,7 +673,7 @@ public:
             }
             return *this;
         }
-        const_iterator& operator--()
+        iterator& operator--()
         {
             if (m_node) {
                 const base_type* prev = tree_prev(m_node->get_base());
@@ -689,22 +689,22 @@ public:
             }
             return *this;
         }
-        const_iterator operator++(int)
+        iterator operator++(int)
         {
-            const_iterator copy(m_node, m_root);
+            iterator copy(m_node, m_root);
             ++(*this);
             return copy;
         }
-        const_iterator operator--(int)
+        iterator operator--(int)
         {
-            const_iterator copy(m_node, m_root);
+            iterator copy(m_node, m_root);
             --(*this);
             return copy;
         }
-        bool operator==(const_iterator rhs) const { return m_node == rhs.m_node; }
-        bool operator!=(const_iterator rhs) const { return m_node != rhs.m_node; }
+        bool operator==(iterator rhs) const { return m_node == rhs.m_node; }
+        bool operator!=(iterator rhs) const { return m_node != rhs.m_node; }
     };
-    using iterator = const_iterator;
+    using const_iterator = iterator;
 
     template <typename... Args>
     std::pair<iterator,bool> emplace(Args&&... args)
