@@ -217,9 +217,13 @@ private:
             m_begin = node->next();
         }
         node->unlink();
+        m_size--;
+    }
+
+    void do_destroy_node(node_type* node)
+    {
         std::allocator_traits<node_allocator_type>::destroy(m_alloc, node);
         std::allocator_traits<node_allocator_type>::deallocate(m_alloc, node, 1);
-        m_size--;
     }
 
     template <typename... Args>
@@ -255,6 +259,7 @@ private:
             instance.remove_node(node);
         }, node, m_index_instances);
         do_erase_cleanup(node);
+        do_destroy_node(node);
     }
 
     template <typename Callable>
@@ -295,6 +300,7 @@ private:
                 if (!modify) instance.remove_node(node);
             }, node, m_index_instances,  indicies_to_modify);
             do_erase_cleanup(node);
+            do_destroy_node(node);
             return false;
         }
     }
@@ -331,14 +337,7 @@ private:
             foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance) TMI_CPP23_STATIC {
                 instance.remove_node(node);
             }, node, m_index_instances);
-            if (node == m_end) {
-                m_end = node->prev();
-            }
-            if (node == m_begin) {
-                m_begin = node->next();
-            }
-            node->unlink();
-            m_size--;
+            do_erase_cleanup(node);
         }
         return node_handle(m_alloc, node);
     }
