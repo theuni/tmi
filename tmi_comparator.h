@@ -18,7 +18,7 @@
 
 namespace tmi {
 
-template <typename T, typename Node, typename Comparator, typename Parent, int I>
+template <typename T, typename Node, typename Comparator, typename Parent, typename Allocator, int I>
 class tmi_comparator
 {
     using node_type = Node;
@@ -28,6 +28,8 @@ class tmi_comparator
     using key_compare = typename Comparator::comparator;
     using key_type = typename key_from_value::result_type;
     using ctor_args = std::tuple<key_from_value,key_compare>;
+    using allocator_type = Allocator;
+    using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     static constexpr bool sorted_unique() { return Comparator::is_ordered_unique(); }
     friend Parent;
 
@@ -914,6 +916,11 @@ public:
     bool empty() const
     {
         return m_parent.get_empty();
+    }
+
+    allocator_type get_allocator() const noexcept
+    {
+        return m_parent.get_allocator();
     }
 
 private:

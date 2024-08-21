@@ -27,8 +27,8 @@ struct index_type_helper
     using index_types = typename Indices::index_types;
     using node_type = tminode<T, Indices>;
     using index_type = std::tuple_element_t<I, index_types>;
-    using comparator = tmi_comparator<T, node_type, index_type, Parent, I>;
-    using hasher = tmi_hasher<T, node_type, index_type, Parent, I>;
+    using comparator = tmi_comparator<T, node_type, index_type, Parent, Allocator, I>;
+    using hasher = tmi_hasher<T, node_type, index_type, Parent, Allocator, I>;
     using type = std::conditional_t<std::is_base_of_v<hashed_type, index_type>, hasher, comparator>;
 };
 
@@ -130,10 +130,10 @@ public:
     using indices_premodify_cache_tuple = typename index_tuple_helper<std::make_index_sequence<num_indices>>::premodify_cache_types;
     using ctor_args_list = typename index_tuple_helper<std::make_index_sequence<num_indices>>::ctor_args_types;
 
-    template <typename, typename, typename, typename, int>
+    template <typename, typename, typename, typename, typename, int>
     friend class tmi_hasher;
 
-    template <typename, typename, typename, typename, int>
+    template <typename, typename, typename, typename, typename, int>
     friend class tmi_comparator;
 
 private:
@@ -450,6 +450,11 @@ public:
     const index_t<Tag>& get() const noexcept
     {
         return std::get<index_v<Tag>>(m_index_instances);
+    }
+
+    allocator_type get_allocator() const noexcept
+    {
+        return m_alloc;
     }
 };
 

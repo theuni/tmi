@@ -15,7 +15,7 @@
 
 namespace tmi {
 
-template <typename T, typename Node, typename Hasher, typename Parent, int I>
+template <typename T, typename Node, typename Hasher, typename Parent, typename Allocator, int I>
 class tmi_hasher
 {
     using node_type = Node;
@@ -27,6 +27,8 @@ class tmi_hasher
     using hasher = typename Hasher::hasher_type;
     using key_equal = typename Hasher::pred_type;
     using ctor_args = std::tuple<size_type,key_from_value,hasher,key_equal>;
+    using allocator_type = Allocator;
+    using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     friend Parent;
 
     static constexpr bool hashed_unique() { return Hasher::is_hashed_unique(); }
@@ -485,6 +487,11 @@ public:
     bool empty() const
     {
         return m_parent.get_empty();
+    }
+
+    allocator_type get_allocator() const noexcept
+    {
+        return m_parent.get_allocator();
     }
 
 private:
