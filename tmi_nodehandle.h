@@ -89,6 +89,20 @@ public:
     }
 };
 
+template<typename Iter, typename NodeType>
+struct insert_return_type
+{
+    Iter position;
+    bool inserted;
+    NodeType node;
+
+    insert_return_type(Iter it, bool ins, NodeType&& node_in) : position(it), inserted(ins), node(std::move(node_in)){}
+    insert_return_type(insert_return_type&&) = default;
+    insert_return_type& operator=(insert_return_type&&) = default;
+    insert_return_type(const insert_return_type&) = delete;
+    insert_return_type& operator=(const insert_return_type&) = delete;
+};
+
 } // namespace detail
 } // namespace tmi
 
