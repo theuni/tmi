@@ -23,6 +23,12 @@ class node_handle
     template <typename, typename, typename>
     friend class tmi::multi_index_container;
 
+    template <typename, typename, typename, typename, typename, int>
+    friend class tmi::tmi_comparator;
+
+    template <typename, typename, typename, typename, typename, int>
+    friend class tmi::tmi_hasher;
+
     constexpr node_handle(const node_allocator_type& alloc, node_type* node) noexcept : m_alloc(alloc), m_node(node){}
 
     void destroy()

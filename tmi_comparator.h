@@ -23,6 +23,9 @@ namespace tmi {
 template <typename T, typename Node, typename Comparator, typename Parent, typename Allocator, int I>
 class tmi_comparator
 {
+public:
+    class const_iterator;
+
     using node_type = Node;
     using base_type = typename node_type::base_type;
     using Color = typename base_type::Color;
@@ -33,7 +36,9 @@ class tmi_comparator
     using allocator_type = Allocator;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using node_handle = detail::node_handle<Allocator, Node>;
+    using insert_return_type = detail::insert_return_type<const_iterator, node_handle>;
 
+private:
     static constexpr bool sorted_unique() { return Comparator::is_ordered_unique(); }
     friend Parent;
 
@@ -925,6 +930,20 @@ public:
     bool empty() const
     {
         return m_parent.get_empty();
+    }
+
+    insert_return_type insert(node_handle&& handle)
+    {
+        node_type* node = handle.m_node;
+        if(!node) {
+            return {end(), false, {}};
+        }
+        node_type* conflict = m_parent.do_insert(node);
+        if (conflict) {
+            return {make_iterator(conflict), false, std::move(handle)};
+        }
+        handle.m_node = nullptr;
+        return {make_iterator(node), true, {}};
     }
 
     node_handle extract(const_iterator it)

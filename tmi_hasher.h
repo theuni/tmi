@@ -20,6 +20,9 @@ namespace tmi {
 template <typename T, typename Node, typename Hasher, typename Parent, typename Allocator, int I>
 class tmi_hasher
 {
+public:
+    class iterator;
+
     using node_type = Node;
     using base_type = typename node_type::base_type;
     using hash_buckets = std::vector<base_type*>;
@@ -32,9 +35,10 @@ class tmi_hasher
     using allocator_type = Allocator;
     using node_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type>;
     using node_handle = detail::node_handle<Allocator, Node>;
-
+    using insert_return_type = detail::insert_return_type<iterator, node_handle>;
     friend Parent;
 
+private:
     static constexpr bool hashed_unique() { return Hasher::is_hashed_unique(); }
 
     struct insert_hints {
@@ -491,6 +495,20 @@ public:
     bool empty() const
     {
         return m_parent.get_empty();
+    }
+
+    insert_return_type insert(node_handle&& handle)
+    {
+        node_type* node = handle.m_node;
+        if(!node) {
+            return {end(), false, {}};
+        }
+        node_type* conflict = m_parent.do_insert(node);
+        if (conflict) {
+            return {make_iterator(conflict), false, std::move(handle)};
+        }
+        handle.m_node = nullptr;
+        return {make_iterator(node), true, {}};
     }
 
     node_handle extract(const_iterator it)
