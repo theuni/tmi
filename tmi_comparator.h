@@ -586,6 +586,11 @@ class tmi_comparator
     {
         base_type* base = node->get_base();
         base_type* parent = hints.m_parent;
+
+        base->template set_left<I>(nullptr);
+        base->template set_right<I>(nullptr);
+        base->template set_color<I>(Color::RED);
+
         if (!parent) {
             set_root_node(node);
             base->template set_parent<I>(&m_roots);
