@@ -56,9 +56,9 @@ private:
     key_from_value m_key_from_value;
     key_compare m_comparator;
 
-    tmi_comparator(Parent& parent) : m_parent(parent){}
+    tmi_comparator(Parent& parent, const allocator_type&) : m_parent(parent){}
 
-    tmi_comparator(Parent& parent, const ctor_args& args) : m_parent(parent), m_key_from_value(std::get<0>(args)), m_comparator(std::get<1>(args)){}
+    tmi_comparator(Parent& parent, const allocator_type&, const ctor_args& args) : m_parent(parent), m_key_from_value(std::get<0>(args)), m_comparator(std::get<1>(args)){}
     tmi_comparator(Parent& parent, const tmi_comparator& rhs) : m_parent(parent), m_key_from_value(rhs.m_key_from_value), m_comparator(rhs.m_comparator){}
     tmi_comparator(Parent& parent, tmi_comparator&& rhs) : m_parent(parent), m_roots(std::move(rhs.m_roots)), m_key_from_value(std::move(rhs.m_key_from_value)), m_comparator(std::move(rhs.m_comparator))
     {

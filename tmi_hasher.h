@@ -63,9 +63,9 @@ private:
 
     tmi_hasher(Parent& parent) : m_parent(parent){}
 
-    tmi_hasher(Parent& parent, const ctor_args& args) : m_parent(parent), m_buckets(std::get<0>(args), nullptr), m_key_from_value(std::get<1>(args)), m_hasher(std::get<2>(args)), m_pred(std::get<3>(args)){}
+    tmi_hasher(Parent& parent, const allocator_type& alloc, const ctor_args& args) : m_parent(parent), m_buckets(std::get<0>(args), nullptr), m_key_from_value(std::get<1>(args)), m_hasher(std::get<2>(args)), m_pred(std::get<3>(args)){}
 
-    tmi_hasher(Parent& parent, const tmi_hasher& rhs) : m_parent(parent), m_buckets(rhs.m_buckets.size(), nullptr), m_key_from_value(rhs.m_key_from_value), m_hasher(rhs.m_hasher), m_pred(rhs.m_pred){}
+    tmi_hasher(Parent& parent, const allocator_type& alloc, const tmi_hasher& rhs) : m_parent(parent), m_buckets(rhs.m_buckets.size(), nullptr), m_key_from_value(rhs.m_key_from_value), m_hasher(rhs.m_hasher), m_pred(rhs.m_pred){}
     tmi_hasher(Parent& parent, tmi_hasher&& rhs) : m_parent(parent), m_buckets(std::move(rhs.m_buckets)), m_key_from_value(std::move(rhs.m_key_from_value)), m_hasher(std::move(rhs.m_hasher)), m_pred(std::move(rhs.m_pred))
     {
         rhs.m_buckets.clear();
