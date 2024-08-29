@@ -27,7 +27,6 @@ public:
     class iterator;
 
     using node_type = Node;
-    using Color = typename node_type::Color;
     using key_from_value = typename Comparator::key_from_value_type;
     using key_compare = typename Comparator::comparator;
     using key_type = typename key_from_value::result_type;
@@ -84,14 +83,14 @@ private:
         lhs->template set_parent<I>(rhs);
     }
 
-    static Color get_color(node_type* node)
+    static int get_bf(node_type* node)
     {
-        return node->template color<I>();
+        return node->template bf<I>();
     }
 
-    static void set_color(node_type* node, Color color)
+    static void set_bf(node_type* node, int bf)
     {
-        node->template set_color<I>(color);
+        node->template set_bf<I>(bf);
     }
 
     static node_type* get_left(node_type* node)
@@ -234,7 +233,7 @@ private:
 
         node->template set_left<I>(nullptr);
         node->template set_right<I>(nullptr);
-        node->template set_color<I>(Color::RED);
+        node->template set_bf<I>(0);
         node->template set_parent<I>(parent);
 
         if(parent) {
@@ -290,7 +289,7 @@ private:
 
         node->template set_left<I>(nullptr);
         node->template set_right<I>(nullptr);
-        node->template set_color<I>(Color::RED);
+        node->template set_bf<I>(0);
         node->template set_parent<I>(parent);
 
         if (!parent) {
@@ -324,7 +323,7 @@ private:
             node->template set_parent<I>(nullptr);
             node->template set_left<I>(nullptr);
             node->template set_right<I>(nullptr);
-            node->template set_color<I>(Color::RED);
+            node->template set_bf<I>(0);
             return true;
         }
         return false;

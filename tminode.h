@@ -19,6 +19,7 @@ class tminode {
         tminode* m_left{nullptr};
         tminode* m_right{nullptr};
         tminode* m_parent{nullptr};
+        int m_bf{0};
     };
     struct hash {
         tminode* m_nexthash{nullptr};
@@ -48,12 +49,6 @@ class tminode {
     tminode* m_next{nullptr};
 
 public:
-    friend class tminode<T, Indices>;
-    enum Color : bool {
-        RED = false,
-        BLACK = true
-    };
-
     tminode(const tminode& rhs) = default;
 
     explicit tminode(const T& elem) : m_value(elem)
@@ -98,42 +93,29 @@ public:
         std::get<I>(m_data).m_left = rhs;
     }
 
-
-    /* The following functions use Boost's pointer compression trick to
-       encode the red/black bit in the parent pointer. It makes the
-       assumption that no sane compiler will ever allow this pointer to
-       be set to an odd memory address. */
-
     template <int I>
     tminode* parent() const
     {
-        static constexpr uintptr_t mask = std::numeric_limits<uintptr_t>::max() - 1;
-        auto addr = reinterpret_cast<uintptr_t>(std::get<I>(m_data).m_parent) & mask;
-        return reinterpret_cast<tminode*>(addr);
+        return std::get<I>(m_data).m_parent;
     }
 
     template <int I>
     void set_parent(tminode* rhs)
     {
-        static constexpr uintptr_t mask = 1;
-        auto prev = reinterpret_cast<uintptr_t>(std::get<I>(m_data).m_parent) & mask;
-        auto newaddr = reinterpret_cast<uintptr_t>(rhs) | prev;
-        std::get<I>(m_data).m_parent = reinterpret_cast<tminode*>(newaddr);
+        std::get<I>(m_data).m_parent = rhs;
+    }
+
+
+    template <int I>
+    void set_bf(int bf)
+    {
+        std::get<I>(m_data).m_bf = bf;
     }
 
     template <int I>
-    Color color() const
+    int bf() const
     {
-        static constexpr uintptr_t mask = 1;
-        return (reinterpret_cast<uintptr_t>(std::get<I>(m_data).m_parent) & mask) == 0 ? Color::RED : Color::BLACK;
-    }
-
-    template <int I>
-    void set_color(Color rhs)
-    {
-        static constexpr uintptr_t mask = std::numeric_limits<uintptr_t>::max() - 1;
-        auto addr = reinterpret_cast<uintptr_t>(std::get<I>(m_data).m_parent) & mask;
-        std::get<I>(m_data).m_parent = reinterpret_cast<tminode*>(addr | static_cast<uintptr_t>(rhs));
+        std::get<I>(m_data).m_bf;
     }
 
     template <int I>
