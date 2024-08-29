@@ -26,7 +26,6 @@ public:
     class iterator;
 
     using node_type = Node;
-    using base_type = typename node_type::base_type;
     using size_type = size_t;
     using key_from_value = typename Hasher::key_from_value_type;
     using key_type = typename key_from_value::result_type;
@@ -44,19 +43,19 @@ private:
 
     struct insert_hints {
         size_t m_hash{0};
-        base_type** m_bucket{nullptr};
+        node_type** m_bucket{nullptr};
     };
 
     struct premodify_cache {
-        base_type** m_bucket{nullptr};
-        base_type* m_prev{nullptr};
+        node_type** m_bucket{nullptr};
+        node_type* m_prev{nullptr};
     };
 
     class hash_buckets
     {
-        using bucket_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<base_type*>;
+        using bucket_allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<node_type*>;
         bucket_allocator_type m_alloc;
-        base_type** m_buckets{nullptr};
+        node_type** m_buckets{nullptr};
         size_t m_bucket_count{0};
         size_t m_capacity{0};
 
@@ -120,27 +119,27 @@ private:
         {
             return m_bucket_count == 0;
         }
-        const base_type* const* begin() const
+        const node_type* const* begin() const
         {
             return &m_buckets[0];
         }
-        const base_type* const* end() const
+        const node_type* const* end() const
         {
             return &m_buckets[0] + m_bucket_count;
         }
-        base_type** begin()
+        node_type** begin()
         {
             return &m_buckets[0];
         }
-        base_type** end()
+        node_type** end()
         {
             return &m_buckets[0] + m_bucket_count;
         }
-        const base_type* const& at(size_t index) const
+        const node_type* const& at(size_t index) const
         {
             return m_buckets[index];
         }
-        base_type*& at(size_t index)
+        node_type*& at(size_t index)
         {
             return m_buckets[index];
         }
@@ -155,7 +154,7 @@ private:
         size_type bucket_size(size_type bucket) const
         {
             size_t ret = 0;
-            base_type* node = m_buckets[bucket];
+            node_type* node = m_buckets[bucket];
             while(node) {
                 node = node->template next_hash<I>();
                 ret++;
@@ -167,15 +166,15 @@ private:
 
         void do_rehash_copy(size_t new_bucket_count)
         {
-            base_type** new_buckets = do_allocate(new_bucket_count);
-            base_type** old_buckets = m_buckets;
+            node_type** new_buckets = do_allocate(new_bucket_count);
+            node_type** old_buckets = m_buckets;
             size_t old_capacity = m_capacity;
             for(size_t i = 0; i < m_bucket_count; i++) {
-                base_type* cur_node = old_buckets[i];
+                node_type* cur_node = old_buckets[i];
                 while (cur_node) {
-                    base_type* next_node = cur_node->template next_hash<I>();
+                    node_type* next_node = cur_node->template next_hash<I>();
                     const size_t index = cur_node->template hash<I>() % new_bucket_count;
-                    base_type*& new_bucket = new_buckets[index];
+                    node_type*& new_bucket = new_buckets[index];
                     cur_node->template set_next_hashptr<I>(new_bucket);
                     new_bucket = cur_node;
                     cur_node = next_node;
@@ -190,12 +189,12 @@ private:
         void do_rehash_inplace(size_t new_bucket_count)
         {
             for(size_t i = 0; i < m_bucket_count; i++) {
-                base_type* cur_node = m_buckets[i];
-                base_type* prev_node = nullptr;
+                node_type* cur_node = m_buckets[i];
+                node_type* prev_node = nullptr;
                 while (cur_node) {
-                    base_type* next_node = cur_node->template next_hash<I>();
+                    node_type* next_node = cur_node->template next_hash<I>();
                     const size_t index = cur_node->template hash<I>() % new_bucket_count;
-                    base_type*& new_bucket = m_buckets[index];
+                    node_type*& new_bucket = m_buckets[index];
                     if (index != i) {
                         if (prev_node == nullptr) {
                             m_buckets[i] = cur_node->template next_hash<I>();
@@ -211,17 +210,17 @@ private:
             }
             m_bucket_count = new_bucket_count;
         }
-        base_type** do_allocate(size_t new_capacity)
+        node_type** do_allocate(size_t new_capacity)
         {
             if (!new_capacity)
             {
                 return nullptr;
             }
-            base_type** ret = std::allocator_traits<bucket_allocator_type>::allocate(m_alloc, new_capacity);
+            node_type** ret = std::allocator_traits<bucket_allocator_type>::allocate(m_alloc, new_capacity);
             std::memset(ret, 0, new_capacity * sizeof(*ret));
             return ret;
         }
-        void do_deallocate(base_type** buckets, size_t capacity)
+        void do_deallocate(node_type** buckets, size_t capacity)
         {
             if (capacity) {
                 std::allocator_traits<bucket_allocator_type>::deallocate(m_alloc, buckets, capacity);
@@ -251,40 +250,39 @@ private:
         rhs.m_buckets.clear();
     }
 
-    static base_type* get_next_hash(base_type* base)
+    static node_type* get_next_hash(node_type* node)
     {
-        return base->template next_hash<I>();
+        return node->template next_hash<I>();
     }
 
-    static size_t get_hash(base_type* base)
+    static size_t get_hash(node_type* node)
     {
-        return base->template hash<I>();
+        return node->template hash<I>();
     }
 
-    static void set_hash(base_type* base, size_t hash)
+    static void set_hash(node_type* node, size_t hash)
     {
-        base->template set_hash<I>(hash);
+        node->template set_hash<I>(hash);
     }
 
-    static void set_next_hashptr(base_type* lhs, base_type* rhs)
+    static void set_next_hashptr(node_type* lhs, node_type* rhs)
     {
         lhs->template set_next_hashptr<I>(rhs);
     }
 
     void remove_node(const node_type* node)
     {
-        const base_type* base = node->get_base();
         const size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
             return;
         }
-        const size_t index = base->template hash<I>() % bucket_count;
+        const size_t index = node->template hash<I>() % bucket_count;
 
-        base_type*& bucket = m_buckets.at(index);
-        base_type* cur_node = bucket;
-        base_type* prev_node = cur_node;
+        node_type*& bucket = m_buckets.at(index);
+        node_type* cur_node = bucket;
+        node_type* prev_node = cur_node;
         while (cur_node) {
-            if (cur_node->node() == node) {
+            if (cur_node == node) {
                 if (cur_node == prev_node) {
                     // head of list
                     bucket = cur_node->template next_hash<I>();
@@ -300,17 +298,15 @@ private:
 
     void insert_node_direct(node_type* node)
     {
-        base_type* base = node->get_base();
-
-        if (base->template hash<I>() == 0) {
+        if (node->template hash<I>() == 0) {
             const size_t hash = m_hasher(m_key_from_value(node->value()));
-            base->template set_hash<I>(hash);
+            node->template set_hash<I>(hash);
         }
-        const size_t index = base->template hash<I>() % m_buckets.size();
-        base_type*& bucket = m_buckets.at(index);
+        const size_t index = node->template hash<I>() % m_buckets.size();
+        node_type*& bucket = m_buckets.at(index);
 
-        base->template set_next_hashptr<I>(bucket);
-        bucket = base;
+        node->template set_next_hashptr<I>(bucket);
+        bucket = node;
     }
 
     /*
@@ -332,15 +328,15 @@ private:
         }
 
         const size_t index = hash % m_buckets.size();
-        base_type*& bucket = m_buckets.at(index);
+        node_type*& bucket = m_buckets.at(index);
 
         if constexpr (hashed_unique()) {
-            base_type* curr = bucket;
-            base_type* prev = curr;
+            node_type* curr = bucket;
+            node_type* prev = curr;
             while (curr) {
                 if (curr->template hash<I>() == hash) {
-                    if (m_pred(m_key_from_value(curr->node()->value()), key)) {
-                        return curr->node();
+                    if (m_pred(m_key_from_value(curr->value()), key)) {
+                        return curr;
                     }
                 }
                 prev = curr;
@@ -354,18 +350,17 @@ private:
 
     void create_premodify_cache(const node_type* node, premodify_cache& cache)
     {
-        const base_type* base = node->get_base();
         const size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
             return;
         }
-        const size_t index = base->template hash<I>() % bucket_count;
+        const size_t index = node->template hash<I>() % bucket_count;
 
-        base_type*& bucket = m_buckets.at(index);
-        base_type* cur_node = bucket;
-        base_type* prev_node = cur_node;
+        node_type*& bucket = m_buckets.at(index);
+        node_type* cur_node = bucket;
+        node_type* prev_node = cur_node;
         while (cur_node) {
-            if (cur_node->node() == node) {
+            if (cur_node == node) {
                 if (cur_node == prev_node) {
                     cache.m_prev = nullptr;
                     cache.m_bucket = &bucket;
@@ -382,12 +377,11 @@ private:
 
     bool erase_if_modified(const node_type* node, const premodify_cache& cache)
     {
-        const base_type* base = node->get_base();
-        if (m_hasher(m_key_from_value(node->value())) != base->template hash<I>()) {
+        if (m_hasher(m_key_from_value(node->value())) != node->template hash<I>()) {
             if (cache.m_prev) {
-                cache.m_prev->template set_next_hashptr<I>(base->template next_hash<I>());
+                cache.m_prev->template set_next_hashptr<I>(node->template next_hash<I>());
             } else {
-                *cache.m_bucket = base->template next_hash<I>();
+                *cache.m_bucket = node->template next_hash<I>();
             }
             return true;
         }
@@ -396,10 +390,9 @@ private:
 
     void insert_node(node_type* node, const insert_hints& hints)
     {
-        base_type* node_base = node->get_base();
-        node_base->template set_hash<I>(hints.m_hash);
-        node_base->template set_next_hashptr<I>(*hints.m_bucket);
-        *hints.m_bucket = node_base;
+        node->template set_hash<I>(hints.m_hash);
+        node->template set_next_hashptr<I>(*hints.m_bucket);
+        *hints.m_bucket = node;
     }
 
 
@@ -413,8 +406,8 @@ private:
         auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
-                    return node->node();
+                if (m_pred(m_key_from_value(node->value()), hash_key)) {
+                    return node;
                 }
             }
             node = node->template next_hash<I>();
@@ -449,10 +442,10 @@ public:
         const T* operator->() const { return &m_node->value(); }
         iterator& operator++()
         {
-            const base_type* next = m_node->get_base()->template next_hash<I>();
+            const node_type* next = m_node->template next_hash<I>();
             if (!next) {
                 const size_t bucket_size = m_buckets->size();
-                size_t bucket = m_node->get_base()->template hash<I>() % bucket_size;
+                size_t bucket = m_node->template hash<I>() % bucket_size;
                 bucket++;
                 for (; bucket < bucket_size; ++bucket) {
                     next = m_buckets->at(bucket);
@@ -464,7 +457,7 @@ public:
             if (next == nullptr) {
                 m_node = nullptr;
             } else {
-                m_node = next->node();
+                m_node = next;
             }
             return *this;
         }
@@ -484,7 +477,7 @@ public:
     {
         for (const auto& bucket : m_buckets) {
             if (bucket) {
-                return make_iterator(bucket->node());
+                return make_iterator(bucket);
             }
         }
         return end();
@@ -494,7 +487,7 @@ public:
     {
         for (const auto& bucket : m_buckets) {
             if (bucket) {
-                return make_iterator(bucket->node());
+                return make_iterator(bucket);
             }
         }
         return end();
@@ -547,8 +540,8 @@ public:
         auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
-                    return make_iterator(node->node());
+                if (m_pred(m_key_from_value(node->value()), hash_key)) {
+                    return make_iterator(node);
                 }
             }
             node = node->template next_hash<I>();
@@ -567,8 +560,8 @@ public:
         auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_pred(m_key_from_value(node->node()->value()), key)) {
-                    return make_iterator(node->node());
+                if (m_pred(m_key_from_value(node->value()), key)) {
+                    return make_iterator(node);
                 }
             }
             node = node->template next_hash<I>();
@@ -580,10 +573,10 @@ public:
     {
         node_type* node = const_cast<node_type*>(it.m_node);
         if (!node) return end();
-        base_type* next = get_next_hash(node->get_base());
+        node_type* next = get_next_hash(node);
         if (!next) {
             const size_t bucket_size = m_buckets.size();
-            size_t bucket = node->get_base()->template hash<I>() % bucket_size;
+            size_t bucket = node->template hash<I>() % bucket_size;
             bucket++;
             for (; bucket < bucket_size; ++bucket) {
                 next = m_buckets.at(bucket);
@@ -594,7 +587,7 @@ public:
         if (!next) {
             return end();
         }
-        return make_iterator(next->node());
+        return make_iterator(next);
     }
 
     size_t count(const T& value) const
@@ -609,7 +602,7 @@ public:
         auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_pred(m_key_from_value(node->node()->value()), key)) {
+                if (m_pred(m_key_from_value(node->value()), key)) {
                     ret++;
                     if constexpr (hashed_unique()) break;
                 }
@@ -630,7 +623,7 @@ public:
         auto* node = m_buckets.at(hash % bucket_count);
         while (node) {
             if (node->template hash<I>() == hash) {
-                if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
+                if (m_pred(m_key_from_value(node->value()), hash_key)) {
                     ret++;
                     if constexpr (hashed_unique()) break;
                 }

@@ -27,8 +27,7 @@ public:
     class iterator;
 
     using node_type = Node;
-    using base_type = typename node_type::base_type;
-    using Color = typename base_type::Color;
+    using Color = typename node_type::Color;
     using key_from_value = typename Comparator::key_from_value_type;
     using key_compare = typename Comparator::comparator;
     using key_type = typename key_from_value::result_type;
@@ -43,7 +42,7 @@ private:
     friend Parent;
 
     struct insert_hints {
-        base_type* m_parent{nullptr};
+        node_type* m_parent{nullptr};
         bool m_inserted_left{false};
     };
 
@@ -52,7 +51,7 @@ private:
 
     Parent& m_parent;
 
-    base_type m_roots;
+    node_type* m_root{nullptr};
     key_from_value m_key_from_value;
     key_compare m_comparator;
 
@@ -60,475 +59,170 @@ private:
 
     tmi_comparator(Parent& parent, const allocator_type&, const ctor_args& args) : m_parent(parent), m_key_from_value(std::get<0>(args)), m_comparator(std::get<1>(args)){}
     tmi_comparator(Parent& parent, const tmi_comparator& rhs) : m_parent(parent), m_key_from_value(rhs.m_key_from_value), m_comparator(rhs.m_comparator){}
-    tmi_comparator(Parent& parent, tmi_comparator&& rhs) : m_parent(parent), m_roots(std::move(rhs.m_roots)), m_key_from_value(std::move(rhs.m_key_from_value)), m_comparator(std::move(rhs.m_comparator))
+    tmi_comparator(Parent& parent, tmi_comparator&& rhs) : m_parent(parent), m_root(rhs.m_root), m_key_from_value(std::move(rhs.m_key_from_value)), m_comparator(std::move(rhs.m_comparator))
     {
-        rhs.m_roots = {};
+        rhs.m_root = nullptr;
     }
 
-    base_type* get_root_base() const
-    {
-        return m_roots.template left<I>();
-    }
-
-    void set_root_node(node_type* node)
-    {
-        m_roots.template set_left<I>(node->get_base());
-    }
-
-    static void set_right(base_type* lhs, base_type* rhs)
+    static void set_right(node_type* lhs, node_type* rhs)
     {
         lhs->template set_right<I>(rhs);
     }
 
-    static void set_left(base_type* lhs, base_type* rhs)
+    static void set_left(node_type* lhs, node_type* rhs)
     {
         lhs->template set_left<I>(rhs);
     }
 
-    static base_type* get_parent(base_type* base)
+    static node_type* get_parent(node_type* node)
     {
-        return base->template parent<I>();
+        return node->template parent<I>();
     }
 
-    static void set_parent(base_type* lhs, base_type* rhs)
+    static void set_parent(node_type* lhs, node_type* rhs)
     {
         lhs->template set_parent<I>(rhs);
     }
 
-    static Color get_color(base_type* base)
+    static Color get_color(node_type* node)
     {
-        return base->template color<I>();
+        return node->template color<I>();
     }
 
-    static void set_color(base_type* base, Color color)
+    static void set_color(node_type* node, Color color)
     {
-        base->template set_color<I>(color);
+        node->template set_color<I>(color);
     }
 
-    static base_type* get_left(base_type* base)
+    static node_type* get_left(node_type* node)
     {
-        return base->template left<I>();
+        return node->template left<I>();
     }
 
-    static base_type* get_right(base_type* base)
+    static node_type* get_right(node_type* node)
     {
-        return base->template right<I>();
+        return node->template right<I>();
     }
 
-    /*
-
-    The below insert/erase impls were copied from libc++
-
-    Their base type inheritance was dropped in order to come closer to
-    providing a standard layout. Keeping T as he first member allows us to
-    convert Between T* and node_type*. This is the trick that makes iterator_to
-    work.
-
-    Their root node trick is borrowed as well. The following is adapted from
-    their comment:
-
-//===----------------------------------------------------------------------===//
-//
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//===----------------------------------------------------------------------===//
-
-    The algorithms taking base_type* are red black tree algorithms.  Those
-    algorithms taking a parameter named root should assume that root
-    points to a proper red black tree (unless otherwise specified).
-
-    Each algorithm herein assumes that root->m_parent points to a non-null
-    structure which has a member m_left which points back to root.  No other
-    member is read or written to at root->m_parent.
-
-    root->m_parent_ will be referred to below (in comments only) as m_roots[I].
-    m_roots[I]->m_left is an externably accessible lvalue for root, and can be
-    changed by node insertion and removal (without explicit reference to
-    m_roots[I]).
-
-    All nodes (with the exception of m_roots[I]), even the node referred to as
-    root, have a non-null m_parent field.
-
-*/
-
-    static base_type* tree_max(base_type* x) {
-      while (x->template right<I>() != nullptr)
-        x = x->template right<I>();
-      return x;
-    }
-
-    static const base_type* tree_max(const base_type* x) {
-      while (x->template right<I>() != nullptr)
-        x = x->template right<I>();
-      return x;
-    }
-
-    static bool tree_is_left_child(base_type* x)
+    static bool tree_is_left_child(node_type* node)
     {
-        return x == x->template parent<I>()->template left<I>();
+        return node == get_left(get_parent(node));
     }
 
-    static bool tree_is_left_child(const base_type* x)
+    static bool tree_is_left_child(const node_type* node)
     {
-        return x == x->template parent<I>()->template left<I>();
+        return node == get_left(get_parent(node));
     }
 
-    static base_type* tree_min(base_type* x)
+    static node_type* tree_min(node_type* node)
     {
-        while (x->template left<I>() != nullptr)
-            x = x->template left<I>();
-        return x;
+        assert(node);
+        do {
+            node = get_left(node);
+        } while(node);
+        return node;
     }
 
-    static base_type* tree_next(base_type* x)
+    static const node_type* tree_min(const node_type* node)
     {
-        if (x->template right<I>() != nullptr)
-            return tree_min(x->template right<I>());
-        while (!tree_is_left_child(x))
-            x = x->template parent<I>();
-        return x->template parent<I>();
+        assert(node);
+        do {
+            node = get_left(node);
+        } while(node);
+        return node;
     }
 
-    static const base_type* tree_next(const base_type* x)
+    static node_type* tree_max(node_type* node) {
+        assert(node);
+        do {
+            node = get_right(node);
+        } while(node);
+        return node;
+    }
+
+    static const node_type* tree_max(const node_type* node) {
+        assert(node);
+        do {
+            node = get_right(node);
+        } while(node);
+        return node;
+    }
+
+    static node_type* tree_next(node_type* node)
     {
-        if (x->template right<I>() != nullptr)
-            return tree_min(x->template right<I>());
-        while (!tree_is_left_child(x))
-            x = x->template parent<I>();
-        return x->template parent<I>();
-    }
-
-    static base_type* tree_prev(base_type* x) {
-      if (x->template left<I>() != nullptr)
-        return tree_max(x->template left<I>());
-      while (tree_is_left_child(x))
-        x = x->template parent<I>();
-      return x->template parent<I>();
-    }
-
-    static const base_type* tree_prev(const base_type* x) {
-      if (x->template left<I>() != nullptr)
-        return tree_max(x->template left<I>());
-      while (tree_is_left_child(x))
-        x = x->template parent<I>();
-      return x->template parent<I>();
-    }
-
-    static void tree_left_rotate(base_type* x)
-    {
-        base_type* y = x->template right<I>();
-        x->template set_right<I>(y->template left<I>());
-        if (x->template right<I>() != nullptr)
-            x->template right<I>()->template set_parent<I>(x);
-        y->template set_parent<I>(x->template parent<I>());
-        if (tree_is_left_child(x))
-            x->template parent<I>()->template set_left<I>(y);
-        else
-            x->template parent<I>()->template set_right<I>(y);
-        y->template set_left<I>(x);
-        x->template set_parent<I>(y);
-    }
-
-    static void tree_right_rotate(base_type* x)
-    {
-        base_type* y = x->template left<I>();
-        x->template set_left<I>(y->template right<I>());
-        if (x->template left<I>() != nullptr)
-            x->template left<I>()->template set_parent<I>(x);
-        y->template set_parent<I>(x->template parent<I>());
-        if (tree_is_left_child(x))
-            x->template parent<I>()->template set_left<I>(y);
-        else
-            x->template parent<I>()->template set_right<I>(y);
-        y->template set_right<I>(x);
-        x->template set_parent<I>(y);
-    }
-
-
-    // Precondition:  root != nullptr && z != nullptr.
-    //                tree_invariant(root) == true.
-    //                z == root or == a direct or indirect child of root.
-    // Effects:  unlinks z from the tree rooted at root, rebalancing as needed.
-    // Postcondition: tree_invariant(end_node->template left<I>()) == true && end_node->template left<I>()
-    //                nor any of its children refer to z.  end_node->template left<I>()
-    //                may be different than the value passed in as root.
-    void tree_remove(base_type* z)
-    {
-        base_type* root = get_root_base();
-        assert(root);
-        assert(z);
-        // z will be removed from the tree.  Client still needs to destruct/deallocate it
-        // y is either z, or if z has two children, tree_next(z).
-        // y will have at most one child.
-        // y will be the initial hole in the tree (make the hole at a leaf)
-        base_type* y = (z->template left<I>() == nullptr || z->template right<I>() == nullptr) ?
-                        z : tree_next(z);
-        // x is y's possibly null single child
-        base_type* x = y->template left<I>() != nullptr ? y->template left<I>() : y->template right<I>();
-        // w is x's possibly null uncle (will become x's sibling)
-        base_type* w = nullptr;
-        // link x to y's parent, and find w
-        if (x != nullptr)
-            x->template set_parent<I>(y->template parent<I>());
-        if (tree_is_left_child(y))
-        {
-            y->template parent<I>()->template set_left<I>(x);
-            if (y != root)
-                w = y->template parent<I>()->template right<I>();
-            else
-                root = x;  // w == nullptr
+        assert(node);
+        if (get_right(node)) {
+            return tree_min(get_right(node));
         }
-        else
-        {
-            y->template parent<I>()->template set_right<I>(x);
-            // y can't be root if it is a right child
-            w = y->template parent<I>()->template left<I>();
+        while (node && !tree_is_left_child(node)) {
+            node = get_parent(node);
         }
-        bool removed_black = y->template color<I>() == Color::BLACK;
-        // If we didn't remove z, do so now by splicing in y for z,
-        //    but copy z's color.  This does not impact x or w.
-        if (y != z)
-        {
-            // z->template left<I>() != nulptr but z->template right<I>() might == x == nullptr
-            y->template set_parent<I>(z->template parent<I>());
-            if (tree_is_left_child(z))
-                y->template parent<I>()->template set_left<I>(y);
-            else
-                y->template parent<I>()->template set_right<I>(y);
-            y->template set_left<I>(z->template left<I>());
-            y->template left<I>()->template set_parent<I>(y);
-            y->template set_right<I>(z->template right<I>());
-            if (y->template right<I>() != nullptr)
-                y->template right<I>()->template set_parent<I>(y);
-            y->template set_color<I>(z->template color<I>());
-            if (root == z)
-                root = y;
-        }
-        if (removed_black && root != nullptr)
-        {
-            // Rebalance:
-            // x has an implicit black color (transferred from the removed y)
-            //    associated with it, no matter what its color is.
-            // If x is root (in which case it can't be null), it is supposed
-            //    to be black anyway, and if it is doubly black, then the double
-            //    can just be ignored.
-            // If x is red (in which case it can't be null), then it can absorb
-            //    the implicit black just by setting its color to black.
-            // Since y was black and only had one child (which x points to), x
-            //   is either red with no children, else null, otherwise y would have
-            //   different black heights under left and right pointers.
-            // if (x == root || x != nullptr && !x->is_black_)
-            if (x != nullptr)
-                x->template set_color<I>(Color::BLACK);
-            else {
-                //  Else x isn't root, and is "doubly black", even though it may
-                //     be null.  w can not be null here, else the parent would
-                //     see a black height >= 2 on the x side and a black height
-                //     of 1 on the w side (w must be a non-null black or a red
-                //     with a non-null black child).
-                fixup_after_remove(root, w);
-            }
-        }
+        return node ? get_parent(node) : nullptr;
     }
 
-    static void tree_balance_after_insert(base_type* root, base_type* x)
+    static const node_type* tree_next(const node_type* node)
     {
-        x->template set_color<I>(x == root ? Color::BLACK : Color::RED);
-        while (x != root && x->template parent<I>()->template color<I>() == Color::RED)
-        {
-            // x->template parent<I>() != root because x->template parent<I>()->is_black == false
-            if (tree_is_left_child(x->template parent<I>()))
-            {
-                base_type* y = x->template parent<I>()->template parent<I>()->template right<I>();
-                if (y != nullptr && y->template color<I>() == Color::RED)
-                {
-                    x = x->template parent<I>();
-                    x->template set_color<I>(Color::BLACK);
-                    x = x->template parent<I>();
-                    x->template set_color<I>(x == root ? Color::BLACK : Color::RED);
-                    y->template set_color<I>(Color::BLACK);
-                }
-                else
-                {
-                    if (!tree_is_left_child(x))
-                    {
-                        x = x->template parent<I>();
-                        tree_left_rotate(x);
-                    }
-                    x = x->template parent<I>();
-                    x->template set_color<I>(Color::BLACK);
-                    x = x->template parent<I>();
-                    x->template set_color<I>(Color::RED);
-                    tree_right_rotate(x);
-                    break;
-                }
-            }
-            else
-            {
-                base_type* y = x->template parent<I>()->template parent<I>()->template left<I>();
-                if (y != nullptr && y->template color<I>() == Color::RED)
-                {
-                    x = x->template parent<I>();
-                    x->template set_color<I>(Color::BLACK);
-                    x = x->template parent<I>();
-                    x->template set_color<I>(x == root ? Color::BLACK : Color::RED);
-                    y->template set_color<I>(Color::BLACK);
-                }
-                else
-                {
-                    if (tree_is_left_child(x))
-                    {
-                        x = x->template parent<I>();
-                        tree_right_rotate(x);
-                    }
-                    x = x->template parent<I>();
-                    x->template set_color<I>(Color::BLACK);
-                    x = x->template parent<I>();
-                    x->template set_color<I>(Color::RED);
-                    tree_left_rotate(x);
-                    break;
-                }
-            }
+        assert(node);
+        if (get_right(node)) {
+            return tree_min(get_right(node));
         }
+        while (node && !tree_is_left_child(node)) {
+            node = get_parent(node);
+        }
+        return node ? get_parent(node) : nullptr;
     }
 
-    static void fixup_after_remove(base_type* root, base_type* w)
+    static node_type* tree_prev(node_type* node) {
+        assert(node);
+        if (get_left(node)) {
+            return tree_max(get_left(node));
+        }
+        while (node && tree_is_left_child(node)) {
+            node = get_parent(node);
+        }
+        return node ? get_parent(node) : nullptr;
+    }
+
+    static const node_type* tree_prev(const node_type* node) {
+        assert(node);
+        if (get_left(node)) {
+            return tree_max(get_left(node));
+        }
+        while (node && tree_is_left_child(node)) {
+            node = get_parent(node);
+        }
+        return node ? get_parent(node) : nullptr;
+    }
+
+    node_type* tree_remove(node_type* node)
     {
-        base_type* x = nullptr;
-        while (true)
-        {
-            if (!tree_is_left_child(w))  // if x is left child
-            {
-                if (w->template color<I>() == Color::RED)
-                {
-                    w->template set_color<I>(Color::BLACK);
-                    w->template parent<I>()->template set_color<I>(Color::RED);
-                    tree_left_rotate(w->template parent<I>());
-                    // x is still valid
-                    // reset root only if necessary
-                    if (root == w->template left<I>())
-                        root = w;
-                    // reset sibling, and it still can't be null
-                    w = w->template left<I>()->template right<I>();
-                }
-                // w->is_black_ is now true, w may have null children
-                if ((w->template left<I>()  == nullptr || w->template left<I>()->template color<I>() == Color::BLACK) &&
-                    (w->template right<I>() == nullptr || w->template right<I>()->template color<I>() == Color::BLACK))
-                {
-                    w->template set_color<I>(Color::RED);
-                    x = w->template parent<I>();
-                    // x can no longer be null
-                    if (x == root || x->template color<I>() == Color::RED)
-                    {
-                        x->template set_color<I>(Color::BLACK);
-                        break;
-                    }
-                    // reset sibling, and it still can't be null
-                    w = tree_is_left_child(x) ?
-                                x->template parent<I>()->template right<I>() :
-                                x->template parent<I>()->template left<I>();
-                    // continue;
-                }
-                else  // w has a red child
-                {
-                    if (w->template right<I>() == nullptr || w->template right<I>()->template color<I>() == Color::BLACK)
-                    {
-                        // w left child is non-null and red
-                        w->template left<I>()->template set_color<I>(Color::BLACK);
-                        w->template set_color<I>(Color::RED);
-                        tree_right_rotate(w);
-                        // w is known not to be root, so root hasn't changed
-                        // reset sibling, and it still can't be null
-                        w = w->template parent<I>();
-                    }
-                    // w has a right red child, left child may be null
-                    w->template set_color<I>(w->template parent<I>()->template color<I>());
-                    w->template parent<I>()->template set_color<I>(Color::BLACK);
-                    w->template right<I>()->template set_color<I>(Color::BLACK);
-                    tree_left_rotate(w->template parent<I>());
-                    break;
-                }
-            }
-            else
-            {
-                if (w->template color<I>() == Color::RED)
-                {
-                    w->template set_color<I>(Color::BLACK);
-                    w->template parent<I>()->template set_color<I>(Color::RED);
-                    tree_right_rotate(w->template parent<I>());
-                    // x is still valid
-                    // reset root only if necessary
-                    if (root == w->template right<I>())
-                        root = w;
-                    // reset sibling, and it still can't be null
-                    w = w->template right<I>()->template left<I>();
-                }
-                // w->is_black_ is now true, w may have null children
-                if ((w->template left<I>()  == nullptr || w->template left<I>()->template color<I>() == Color::BLACK) &&
-                    (w->template right<I>() == nullptr || w->template right<I>()->template color<I>() == Color::BLACK))
-                {
-                    w->template set_color<I>(Color::RED);
-                    x = w->template parent<I>();
-                    // x can no longer be null
-                    if (x->template color<I>() == Color::RED || x == root)
-                    {
-                        x->template set_color<I>(Color::BLACK);
-                        break;
-                    }
-                    // reset sibling, and it still can't be null
-                    w = tree_is_left_child(x) ?
-                                x->template parent<I>()->template right<I>() :
-                                x->template parent<I>()->template left<I>();
-                    // continue;
-                }
-                else  // w has a red child
-                {
-                    if (w->template left<I>() == nullptr || w->template left<I>()->template color<I>() == Color::BLACK)
-                    {
-                        // w right child is non-null and red
-                        w->template right<I>()->template set_color<I>(Color::BLACK);
-                        w->template set_color<I>(Color::RED);
-                        tree_left_rotate(w);
-                        // w is known not to be root, so root hasn't changed
-                        // reset sibling, and it still can't be null
-                        w = w->template parent<I>();
-                    }
-                    // w has a left red child, right child may be null
-                    w->template set_color<I>(w->template parent<I>()->template color<I>());
-                    w->template parent<I>()->template set_color<I>(Color::BLACK);
-                    w->template left<I>()->template set_color<I>(Color::BLACK);
-                    tree_right_rotate(w->template parent<I>());
-                    break;
-                }
-            }
-        }
+        //TODO:
+        node_type* new_root = nullptr;
+        return new_root;
     }
 
-//===----------------------------------------------------------------------===//
-//
-//   LLVM Code ends here
-//
-//===----------------------------------------------------------------------===//
-
+    node_type* tree_balance_after_insert(node_type* root, node_type* node)
+    {
+        //TODO:
+        node_type* new_root = nullptr;
+        return new_root;
+    }
 
     void remove_node(node_type* node)
     {
-        tree_remove(node->get_base());
+        m_root = tree_remove(node);
     }
 
     void insert_node_direct(node_type* node)
     {
-        base_type* base = node->get_base();
-        base_type* parent = nullptr;
-        base_type* curr = get_root_base();
+        node_type* parent = nullptr;
+        node_type* curr = m_root;
         const auto& key = m_key_from_value(node->value());
 
         bool inserted_left = false;
         while (curr != nullptr) {
             parent = curr;
-            const auto& curr_key = m_key_from_value(curr->node()->value());
+            const auto& curr_key = m_key_from_value(curr->value());
             if (m_comparator(key, curr_key)) {
                 curr = curr->template left<I>();
                 inserted_left = true;
@@ -538,34 +232,33 @@ private:
             }
         }
 
-        base->template set_left<I>(nullptr);
-        base->template set_right<I>(nullptr);
-        base->template set_color<I>(Color::RED);
+        node->template set_left<I>(nullptr);
+        node->template set_right<I>(nullptr);
+        node->template set_color<I>(Color::RED);
+        node->template set_parent<I>(parent);
 
         if(parent) {
             if (inserted_left) {
-                parent->template set_left<I>(base);
+                parent->template set_left<I>(node);
             } else {
-                parent->template set_right<I>(base);
+                parent->template set_right<I>(node);
             }
-            base->template set_parent<I>(parent);
+            m_root = tree_balance_after_insert(m_root, node);
         } else {
-            set_root_node(node);
-            base->template set_parent<I>(&m_roots);
+            m_root = node;
         }
-        tree_balance_after_insert(get_root_base(), base);
     }
 
     node_type* preinsert_node(const node_type* node, insert_hints& hints)
     {
-        base_type* parent = nullptr;
-        base_type* curr = get_root_base();
+        node_type* parent = nullptr;
+        node_type* curr = m_root;
         const auto& key = m_key_from_value(node->value());
 
         bool inserted_left = false;
         while (curr != nullptr) {
             parent = curr;
-            const auto& curr_key = m_key_from_value(curr->node()->value());
+            const auto& curr_key = m_key_from_value(curr->value());
             if constexpr (sorted_unique()) {
                 if (m_comparator(key, curr_key)) {
                     curr = curr->template left<I>();
@@ -574,7 +267,7 @@ private:
                     curr = curr->template right<I>();
                     inserted_left = false;
                 } else {
-                    return curr->node();
+                    return curr;
                 }
             } else {
                 if (m_comparator(key, curr_key)) {
@@ -593,48 +286,45 @@ private:
 
     void insert_node(node_type* node, const insert_hints& hints)
     {
-        base_type* base = node->get_base();
-        base_type* parent = hints.m_parent;
+        node_type* parent = hints.m_parent;
 
-        base->template set_left<I>(nullptr);
-        base->template set_right<I>(nullptr);
-        base->template set_color<I>(Color::RED);
+        node->template set_left<I>(nullptr);
+        node->template set_right<I>(nullptr);
+        node->template set_color<I>(Color::RED);
+        node->template set_parent<I>(parent);
 
         if (!parent) {
-            set_root_node(node);
-            base->template set_parent<I>(&m_roots);
-        } else if (hints.m_inserted_left) {
-            base->template set_parent<I>(parent);
-            parent->template set_left<I>(base);
+            m_root = node;
         } else {
-            base->template set_parent<I>(parent);
-            parent->template set_right<I>(base);
+            if (hints.m_inserted_left) {
+                parent->template set_left<I>(node);
+            } else {
+                parent->template set_right<I>(node);
+            }
+            m_root = tree_balance_after_insert(m_root, node);
         }
-        tree_balance_after_insert(get_root_base(), base);
     }
 
     bool erase_if_modified(node_type* node, const premodify_cache&)
     {
-        base_type* base = node->get_base();
-        base_type* next_ptr = nullptr;
-        base_type* prev_ptr = nullptr;
-        base_type* root = get_root_base();
+        node_type* next_ptr = nullptr;
+        node_type* prev_ptr = nullptr;
 
-        if (base != tree_min(root))
-            prev_ptr = tree_prev(base);
-        if (base != tree_max(root))
-            next_ptr = tree_next(base);
+        if (node != tree_min(m_root))
+            prev_ptr = tree_prev(node);
+        if (node != tree_max(m_root))
+            next_ptr = tree_next(node);
 
         const auto& key = m_key_from_value(node->value());
 
-        bool needs_resort = ((next_ptr != nullptr && m_comparator(m_key_from_value(next_ptr->node()->value()), key)) ||
-                             (prev_ptr != nullptr && m_comparator(key, m_key_from_value(prev_ptr->node()->value()))));
+        bool needs_resort = ((next_ptr != nullptr && m_comparator(m_key_from_value(next_ptr->value()), key)) ||
+                             (prev_ptr != nullptr && m_comparator(key, m_key_from_value(prev_ptr->value()))));
         if (needs_resort) {
-            tree_remove(base);
-            base->template set_parent<I>(nullptr);
-            base->template set_left<I>(nullptr);
-            base->template set_right<I>(nullptr);
-            base->template set_color<I>(Color::RED);
+            m_root = tree_remove(node);
+            node->template set_parent<I>(nullptr);
+            node->template set_left<I>(nullptr);
+            node->template set_right<I>(nullptr);
+            node->template set_color<I>(Color::RED);
             return true;
         }
         return false;
@@ -642,7 +332,7 @@ private:
 
     void do_clear()
     {
-        m_roots = {};
+        m_root = nullptr;
     }
 
 public:
@@ -650,8 +340,8 @@ public:
     class iterator
     {
         const node_type* m_node{};
-        const base_type* m_root{};
-        iterator(const node_type* node, const base_type* root) : m_node(node), m_root(root){}
+        const node_type* const* m_root{};
+        iterator(const node_type* node, const node_type* const* root) : m_node(node), m_root(root){}
         friend tmi_comparator;
     public:
         typedef const T value_type;
@@ -665,9 +355,9 @@ public:
         const T* operator->() const { return &m_node->value(); }
         iterator& operator++()
         {
-            const base_type* next = tree_next(m_node->get_base());
+            const node_type* next = tree_next(m_node);
             if (next) {
-                m_node = next->node();
+                m_node = next;
             } else {
                 m_node = nullptr;
             }
@@ -676,16 +366,14 @@ public:
         iterator& operator--()
         {
             if (m_node) {
-                const base_type* prev = tree_prev(m_node->get_base());
+                const node_type* prev = tree_prev(m_node);
                 if (prev) {
-                    m_node = prev->node();
+                    m_node = prev;
                 } else {
                     m_node = nullptr;
                 }
             } else {
-                base_type* root = m_root->template left<I>();
-                assert(root);
-                m_node = tree_max(root)->node();
+                m_node = *m_root ? tree_max(*m_root) : nullptr;
             }
             return *this;
         }
@@ -721,10 +409,9 @@ public:
 
     iterator begin() const
     {
-        base_type* root = get_root_base();
-        if (root == nullptr)
+        if (m_root == nullptr)
             return end();
-        return make_iterator(tree_min(root)->node());
+        return make_iterator(tree_min(m_root));
     }
 
     iterator end() const
@@ -751,17 +438,17 @@ public:
     template<typename CompatibleKey>
     iterator find(const CompatibleKey& key) const
     {
-        base_type* parent = nullptr;
-        base_type* curr = get_root_base();
+        node_type* parent = nullptr;
+        node_type* curr = m_root;
         while (curr != nullptr) {
             parent = curr;
-            const auto& curr_key = m_key_from_value(curr->node()->value());
+            const auto& curr_key = m_key_from_value(curr->value());
             if (m_comparator(key, curr_key)) {
                 curr = curr->template left<I>();
             } else if (m_comparator(curr_key, key)) {
                 curr = curr->template right<I>();
             } else {
-                return make_iterator(curr->node());
+                return make_iterator(curr);
             }
         }
         return end();
@@ -770,10 +457,10 @@ public:
     template<typename CompatibleKey>
     iterator lower_bound(const CompatibleKey& key) const
     {
-        base_type* curr = get_root_base();
-        base_type* ret = nullptr;
+        node_type* curr = m_root;
+        node_type* ret = nullptr;
         while (curr != nullptr) {
-            const auto& curr_key = m_key_from_value(curr->node()->value());
+            const auto& curr_key = m_key_from_value(curr->value());
             if (!m_comparator(curr_key, key)) {
                 ret = curr;
                 curr = curr->template left<I>();
@@ -782,7 +469,7 @@ public:
             }
         }
         if (ret) {
-            return make_iterator(ret->node());
+            return make_iterator(ret);
         } else {
             return end();
         }
@@ -791,10 +478,10 @@ public:
     template<typename CompatibleKey>
     iterator upper_bound(const CompatibleKey& key) const
     {
-        base_type* curr = get_root_base();
-        base_type* ret = nullptr;
+        node_type* curr = m_root;
+        node_type* ret = nullptr;
         while (curr != nullptr) {
-            const auto& curr_key = m_key_from_value(curr->node()->value());
+            const auto& curr_key = m_key_from_value(curr->value());
             if (m_comparator(key, curr_key)) {
                 ret = curr;
                 curr = curr->template left<I>();
@@ -803,7 +490,7 @@ public:
             }
         }
         if (ret) {
-            return make_iterator(ret->node());
+            return make_iterator(ret);
         } else {
             return end();
         }
@@ -812,12 +499,12 @@ public:
     template<typename CompatibleKey>
     size_t count(const CompatibleKey& key) const
     {
-        base_type* parent = nullptr;
-        base_type* curr = get_root_base();
+        node_type* parent = nullptr;
+        node_type* curr = m_root;
         size_t ret = 0;
         while (curr != nullptr) {
             parent = curr;
-            const auto& curr_key = m_key_from_value(curr->node()->value());
+            const auto& curr_key = m_key_from_value(curr->value());
             if (m_comparator(key, curr_key)) {
                 curr = curr->template left<I>();
             } else if (m_comparator(curr_key, key)) {
@@ -829,12 +516,12 @@ public:
         }
         if constexpr (sorted_unique()) return ret;
 
-        base_type* found_match = curr;
+        node_type* found_match = curr;
         if (found_match) {
             curr = tree_prev(found_match);
             while (curr != nullptr)
             {
-                const auto& curr_key = m_key_from_value(curr->node()->value());
+                const auto& curr_key = m_key_from_value(curr->value());
                 if (m_comparator(curr_key, key)) {
                     break;
                 }
@@ -844,7 +531,7 @@ public:
             curr = tree_next(found_match);
             while (curr != nullptr)
             {
-                const auto& curr_key = m_key_from_value(curr->node()->value());
+                const auto& curr_key = m_key_from_value(curr->value());
                 if (m_comparator(key, curr_key)) {
                     break;
                 }
@@ -858,10 +545,10 @@ public:
     iterator erase(iterator it)
     {
         node_type* node = const_cast<node_type*>(it.m_node);
-        base_type* next = tree_next(node->get_base());
+        node_type* next = tree_next(node);
         m_parent.do_erase(node);
         if (next) {
-            return make_iterator(next->node());
+            return make_iterator(next);
         } else {
             return end();
         }
@@ -869,12 +556,12 @@ public:
 
     size_t erase(const key_type& key) const
     {
-        base_type* parent = nullptr;
-        base_type* curr = get_root_base();
+        node_type* parent = nullptr;
+        node_type* curr = m_root;
         size_t ret = 0;
         while (curr != nullptr) {
             parent = curr;
-            const auto& curr_key = m_key_from_value(curr->node()->value());
+            const auto& curr_key = m_key_from_value(curr->value());
             if (m_comparator(key, curr_key)) {
                 curr = curr->template left<I>();
             } else if (m_comparator(curr_key, key)) {
@@ -884,35 +571,35 @@ public:
                 break;
             }
         }
-        base_type* found_match = curr;
+        node_type* found_match = curr;
         if (found_match) {
             if constexpr (!sorted_unique()) {
                 curr = tree_prev(found_match);
                 while (curr != nullptr)
                 {
-                    const auto& curr_key = m_key_from_value(curr->node()->value());
+                    const auto& curr_key = m_key_from_value(curr->value());
                     if (m_comparator(curr_key, key)) {
                         break;
                     }
                     ret++;
-                    base_type* to_erase = curr;
+                    node_type* to_erase = curr;
                     curr = tree_prev(curr);
-                    m_parent.do_erase(to_erase->node());
+                    m_parent.do_erase(to_erase);
                 }
                 curr = tree_next(found_match);
                 while (curr != nullptr)
                 {
-                    const auto& curr_key = m_key_from_value(curr->node()->value());
+                    const auto& curr_key = m_key_from_value(curr->value());
                     if (m_comparator(key, curr_key)) {
                         break;
                     }
                     ret++;
-                    base_type* to_erase = curr;
+                    node_type* to_erase = curr;
                     curr = tree_next(curr);
-                    m_parent.do_erase(to_erase->node());
+                    m_parent.do_erase(to_erase);
                 }
             }
-            m_parent.do_erase(found_match->node());
+            m_parent.do_erase(found_match);
         }
         return ret;
     }
@@ -965,7 +652,7 @@ private:
 
     iterator make_iterator(const node_type* node) const
     {
-        return iterator(node, &m_roots);
+        return iterator(node, &m_root);
     }
 
 };
