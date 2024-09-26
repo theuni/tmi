@@ -5,7 +5,9 @@
 #ifndef TMI_NODEHANDLE_H_
 #define TMI_NODEHANDLE_H_
 
-#include "tmi_fwd.h"
+#include "tmi_fwd.h" // IWYU pragma: keep
+
+#include <memory>
 
 namespace tmi {
 namespace detail {

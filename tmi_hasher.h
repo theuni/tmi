@@ -13,10 +13,9 @@
 #include <cstring>
 #include <cstddef>
 #include <iterator>
+#include <limits>
 #include <tuple>
-#include <type_traits>
 #include <utility>
-#include <vector>
 namespace tmi {
 
 template <typename T, typename Node, typename Hasher, typename Parent, typename Allocator, int I>
