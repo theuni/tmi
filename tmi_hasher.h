@@ -62,8 +62,8 @@ private:
 
         struct allocation_result
         {
-            std::allocator_traits<bucket_allocator_type>::pointer ptr;
-            std::allocator_traits<bucket_allocator_type>::size_type count;
+            typename std::allocator_traits<bucket_allocator_type>::pointer ptr;
+            typename std::allocator_traits<bucket_allocator_type>::size_type count;
         };
 
         public:
