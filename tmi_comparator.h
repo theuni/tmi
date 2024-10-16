@@ -736,7 +736,7 @@ public:
     iterator iterator_to(const T& entry) const
     {
         T& ref = const_cast<T&>(entry);
-        node_type* node = reinterpret_cast<node_type*>(&ref);
+        const node_type* node = &node_type::node_cast(entry);
         return make_iterator(node);
     }
 

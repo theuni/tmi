@@ -511,13 +511,13 @@ public:
 
     iterator iterator_to(const T& entry)
     {
-        const node_type* node = reinterpret_cast<const node_type*>(&entry);
+        const node_type* node = &node_type::node_cast(entry);
         return make_iterator(node);
     }
 
     const_iterator iterator_to(const T& entry) const
     {
-        const node_type* node = reinterpret_cast<const node_type*>(&entry);
+        const node_type* node = &node_type::node_cast(entry);
         return make_iterator(node);
     }
 

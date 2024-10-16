@@ -6,13 +6,12 @@
 namespace tmi {
 
 template <typename T, typename Indices>
-class tminode
+class tminode : private T
 {
 public:
     using base_type = tminode_base<T, Indices>;
     using value_type = T;
 private:
-    T m_value;
     base_type m_base{};
     tminode* m_prev{nullptr};
     tminode* m_next{nullptr};
@@ -24,24 +23,24 @@ public:
         m_base = {};
     }
 
-    tminode(const tminode& rhs) : m_value(rhs.m_value), m_base(rhs.m_base)
+    tminode(const tminode& rhs) : T(static_cast<const T&>(rhs)), m_base(rhs.m_base)
     {
         m_base.m_node = this;
     }
 
-    explicit tminode(const T& elem) : m_value(elem)
+    explicit tminode(const T& elem) : T(elem)
     {
         m_base.m_node = this;
     }
 
     template <typename... Args>
-    tminode(std::in_place_t, Args&&... args) : m_value(std::forward<Args>(args)...)
+    tminode(std::in_place_t, Args&&... args) : T(std::forward<Args>(args)...)
     {
         m_base.m_node = this;
     }
 
-    const T& value() const { return m_value; }
-    T& value() { return m_value; }
+    const T& value() const { return static_cast<const T&>(*this); }
+    T& value() { return static_cast<T&>(*this); }
 
     base_type* get_base()
     {
@@ -71,6 +70,10 @@ public:
             m_prev->m_next = m_next;
         if (m_next)
             m_next->m_prev = m_prev;
+    }
+    static const tminode& node_cast(const T& elem)
+    {
+        return static_cast<const tminode&>(elem);
     }
 };
 
