@@ -8,6 +8,7 @@
 #include "tmi_fwd.h" // IWYU pragma: keep
 
 #include <memory>
+#include <optional>
 
 namespace tmi {
 namespace detail {
@@ -19,7 +20,7 @@ class node_handle
     using allocator_type = Allocator;
     using node_allocator_type = typename std::allocator_traits<allocator_type>::template rebind_alloc<node_type>;
     using value_type = typename Node::value_type;
-    node_allocator_type m_alloc;
+    std::optional<node_allocator_type> m_alloc{};
     node_type* m_node = nullptr;
 
     template <typename, typename, typename>
@@ -36,30 +37,31 @@ class node_handle
     void destroy()
     {
         if (m_node) {
-            std::allocator_traits<node_allocator_type>::destroy(m_alloc, m_node);
-            std::allocator_traits<node_allocator_type>::deallocate(m_alloc, m_node, 1);
+            std::allocator_traits<node_allocator_type>::destroy(*m_alloc, m_node);
+            std::allocator_traits<node_allocator_type>::deallocate(*m_alloc, m_node, 1);
             m_node = nullptr;
         }
     }
 
 public:
-    constexpr node_handle() noexcept {}
+    constexpr node_handle() noexcept = default;
     node_handle(node_handle&& rhs) noexcept : m_alloc(std::move(rhs.m_alloc)), m_node(rhs.m_node)
     {
         rhs.m_node = nullptr;
+        rhs.m_alloc.reset();
     }
     node_handle& operator=(node_handle&& rhs)
     {
-        bool was_empty = empty();
         destroy();
         m_node = rhs.m_node;
-        rhs.m_node = nullptr;
         if constexpr (std::allocator_traits<allocator_type>::propagate_on_container_move_assignment)
         {
             m_alloc = std::move(rhs.m_alloc);
-        } else if (was_empty) {
+        } else if (!m_alloc) {
             m_alloc = std::move(rhs.m_alloc);
         }
+        rhs.m_node = nullptr;
+        rhs.m_alloc.reset();
         return *this;
     }
     ~node_handle()
@@ -76,7 +78,7 @@ public:
     }
     allocator_type get_allocator() const
     {
-        return m_alloc;
+        return *m_alloc;
     }
     value_type& value() const
     {

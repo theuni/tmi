@@ -333,12 +333,13 @@ private:
 
     node_handle do_extract(node_type* node)
     {
-        if(node) {
-            foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance) TMI_CPP23_STATIC {
-                instance.remove_node(node);
-            }, node, m_index_instances);
-            do_erase_cleanup(node);
+        if(!node) {
+            return node_handle{};
         }
+        foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance) TMI_CPP23_STATIC {
+             instance.remove_node(node);
+         }, node, m_index_instances);
+        do_erase_cleanup(node);
         return node_handle(m_alloc, node);
     }
 
