@@ -71,7 +71,7 @@ public:
         if (m_next)
             m_next->m_prev = m_prev;
     }
-    static const tminode& node_cast(const T& elem)
+    static constexpr const tminode& node_cast(const T& elem)
     {
         return static_cast<const tminode&>(elem);
     }
