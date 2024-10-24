@@ -558,23 +558,9 @@ public:
 
     iterator erase(iterator it)
     {
-        node_type* node = const_cast<node_type*>(it.m_node);
-        if (!node) return end();
-        base_type* next = get_next_hash(node->get_base());
-        if (!next) {
-            const size_t bucket_size = m_buckets.size();
-            size_t bucket = node->get_base()->template hash<I>() % bucket_size;
-            bucket++;
-            for (; bucket < bucket_size; ++bucket) {
-                next = m_buckets.at(bucket);
-                if (next != nullptr) break;
-            }
-        }
+        node_type* node = const_cast<node_type*>(it++.m_node);
         m_parent.do_erase(node);
-        if (!next) {
-            return end();
-        }
-        return make_iterator(next->node());
+        return it;
     }
 
     template <typename CompatibleKey>
