@@ -70,11 +70,14 @@ int main()
     for (unsigned i = 1; i <= 10; i++) {
         hash_index.emplace(i);
     }
+    assert(hash_index.count("2"));
     auto it = hash_index.find("0");
     hash_index.modify(it, [](myclass& rhs) {
         rhs.val = "11";
     });
     auto least_it = bar.get<comp_less>().begin();
+    auto nh = bar.get<comp_less>().extract(least_it);
+    auto inserted = bar.get<comp_less>().insert(std::move(nh));
     auto greatest_it = bar.get<comp_greater>().begin();
     assert(least_it->val == "1");
     assert(greatest_it->val == "11");
