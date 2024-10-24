@@ -15,7 +15,7 @@ struct hash_nonunique;
 class compare_myclass_less
 {
 public:
-    constexpr bool operator()(const myclass& a, const myclass& b) const noexcept
+    TMI_CPP23_STATIC constexpr bool operator()(const myclass& a, const myclass& b) TMI_CONST_IF_NOT_CPP23_STATIC
     {
         return std::stol(a.val) < std::stol(b.val);
     }
@@ -24,7 +24,7 @@ public:
 class compare_myclass_greater
 {
 public:
-    bool operator()(const myclass& a, const myclass& b) const
+    TMI_CPP23_STATIC bool operator()(const myclass& a, const myclass& b) TMI_CONST_IF_NOT_CPP23_STATIC
     {
         return std::stol(a.val) > std::stol(b.val);
     }
@@ -34,7 +34,7 @@ class myclass_key_from_value
 {
 public:
     using result_type = std::string;
-    result_type operator()(const myclass& a) const
+    TMI_CPP23_STATIC constexpr const result_type& operator()(const myclass& a) TMI_CONST_IF_NOT_CPP23_STATIC noexcept
     {
         return a.val;
     }
@@ -43,7 +43,7 @@ public:
 class myclass_hash
 {
 public:
-    size_t operator()(const myclass_key_from_value::result_type& a) const
+    TMI_CPP23_STATIC size_t operator()(const myclass_key_from_value::result_type& a) TMI_CONST_IF_NOT_CPP23_STATIC noexcept
     {
         return std::hash<std::string>{}(a);
     }
@@ -52,7 +52,7 @@ public:
 class myclass_pred
 {
 public:
-    bool operator()(const myclass_key_from_value::result_type& a, const myclass_key_from_value::result_type& b) const
+    TMI_CPP23_STATIC constexpr bool operator()(const myclass_key_from_value::result_type& a, const myclass_key_from_value::result_type& b) TMI_CONST_IF_NOT_CPP23_STATIC noexcept
     {
         return a == b;
     }
