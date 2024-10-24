@@ -70,6 +70,8 @@ public:
             m_prev->m_next = m_next;
         if (m_next)
             m_next->m_prev = m_prev;
+        m_prev = nullptr;
+        m_next = nullptr;
     }
     static constexpr const tminode& node_cast(const T& elem)
     {
