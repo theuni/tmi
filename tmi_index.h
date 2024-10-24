@@ -11,8 +11,10 @@
 
 #if __cplusplus >= 202302L && defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L
 #define TMI_CPP23_STATIC static
+#define TMI_CONST_IF_NOT_CPP23_STATIC
 #else
 #define TMI_CPP23_STATIC
+#define TMI_CONST_IF_NOT_CPP23_STATIC const
 #endif
 
 namespace tmi {
