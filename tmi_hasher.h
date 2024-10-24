@@ -536,28 +536,9 @@ public:
         return m_parent.do_modify(node, std::forward<Callable>(func));
     }
 
-    iterator find(const key_type& hash_key) const
+    template <typename CompatibleKey>
+    iterator find(const CompatibleKey& key) const
     {
-        const size_t hash = m_hasher(hash_key);
-        const size_t bucket_count = m_buckets.size();
-        if (!bucket_count) {
-            return end();
-        }
-        auto* node = m_buckets.at(hash % bucket_count);
-        while (node) {
-            if (node->template hash<I>() == hash) {
-                if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
-                    return make_iterator(node->node());
-                }
-            }
-            node = node->template next_hash<I>();
-        }
-        return end();
-    }
-
-    iterator find(const T& value) const
-    {
-        const auto& key = m_key_from_value(value);
         const size_t hash = m_hasher(key);
         const size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
@@ -596,10 +577,10 @@ public:
         return make_iterator(next->node());
     }
 
-    size_t count(const T& value) const
+    template <typename CompatibleKey>
+    size_t count(const CompatibleKey& key) const
     {
         size_t ret = 0;
-        const auto& key = m_key_from_value(value);
         const size_t hash = m_hasher(key);
         const size_t bucket_count = m_buckets.size();
         if (!bucket_count) {
@@ -609,27 +590,6 @@ public:
         while (node) {
             if (node->template hash<I>() == hash) {
                 if (m_pred(m_key_from_value(node->node()->value()), key)) {
-                    ret++;
-                    if constexpr (hashed_unique()) break;
-                }
-            }
-            node = node->template next_hash<I>();
-        }
-        return ret;
-    }
-
-    size_t count(const key_type& hash_key) const
-    {
-        size_t ret = 0;
-        const size_t hash = m_hasher(hash_key);
-        const size_t bucket_count = m_buckets.size();
-        if (!bucket_count) {
-            return 0;
-        }
-        auto* node = m_buckets.at(hash % bucket_count);
-        while (node) {
-            if (node->template hash<I>() == hash) {
-                if (m_pred(m_key_from_value(node->node()->value()), hash_key)) {
                     ret++;
                     if constexpr (hashed_unique()) break;
                 }
