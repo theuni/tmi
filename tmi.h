@@ -178,7 +178,7 @@ private:
 
         bool can_insert;
         std::array<node_type*, num_indices> conflicts{};
-        can_insert = get_foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, auto& hints, auto& conflict) TMI_CPP23_STATIC {
+        can_insert = get_foreach_index([]<int I>(const node_type* node, nth_index_t<I>& instance, auto& hints, auto& conflict) TMI_CPP23_STATIC {
             conflict = instance.preinsert_node(node, hints);
             return conflict == nullptr;
         }, node, m_index_instances, hints, conflicts);
@@ -267,7 +267,7 @@ private:
     {
         indices_premodify_cache_tuple index_cache;
 
-        foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, auto& cache) TMI_CPP23_STATIC {
+        foreach_index([]<int I>(const node_type* node, nth_index_t<I>& instance, auto& cache) TMI_CPP23_STATIC {
             if constexpr (nth_index_t<I>::requires_premodify_cache()) {
                 instance.create_premodify_cache(node, cache);
             }
@@ -285,7 +285,7 @@ private:
 
         indices_hints_tuple index_hints;
 
-        bool insertable = get_foreach_index([]<int I>(node_type* node, nth_index_t<I>& instance, const auto& modify, auto& hints) TMI_CPP23_STATIC {
+        bool insertable = get_foreach_index([]<int I>(const node_type* node, nth_index_t<I>& instance, const auto& modify, auto& hints) TMI_CPP23_STATIC {
             if (modify) return instance.preinsert_node(node, hints) == nullptr;
             return true;
         }, node, m_index_instances,  indicies_to_modify, index_hints);
