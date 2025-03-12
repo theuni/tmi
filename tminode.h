@@ -15,7 +15,7 @@ template <typename T, typename Indices>
 class tminode;
 
 template <inheritable T, typename Indices>
-class tminode<T, Indices> : private T
+class tminode<T, Indices> final : private T
 {
 public:
     using base_type = tminode_base<T, Indices>;
